@@ -9,11 +9,10 @@
   <!-- These are ordinary scripts to allow opening index.html via file:// -->
   <script src="data/manifest.js"></script>
   <script src="data/series.js"></script>
-  <script src="data/boundaries.js"></script>
+  <!-- Boundary geometry loads after the main map renders. -->
   <script src="data/footprint.js"></script>
   <script>window.GRACE_CHUNKS={};window.GRACE_FIELDS={};</script>
   <script src="vendor/pako.min.js"></script>
-  <script src="vendor/plotly.min.js"></script>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="app.js" defer></script>
 </head>
@@ -101,8 +100,15 @@
     </div>
   </aside>
   <div id="cursorCoords" class="cursor-coordinates" aria-label="Map coordinates" aria-live="off">Lat: — &nbsp; Lon: —</div>
+  <!-- Mobile map boundary action: accessible, independent of Leaflet's canvas hit testing. -->
+  <div id="mobileBoundaryCard" class="mobile-boundary-card" role="group" aria-label="Selected map boundary" hidden>
+    <button type="button" id="mobileBoundaryClose" class="mobile-boundary-close" aria-label="Close boundary options">×</button>
+    <strong id="mobileBoundaryName"></strong>
+    <div id="mobileBoundaryValue" class="mobile-boundary-value"></div>
+    <button type="button" id="mobileBoundaryTime" class="mobile-boundary-time">Time series</button>
+  </div>
   <div class="partner-logos" aria-label="Project partner logos">
-    <img src="assets/partner_logos_strip.png" alt="Partner institutions and project collaborators">
+    <img src="assets/partner_logos_strip.png" alt="Partner institutions and project collaborators" loading="lazy" decoding="async">
   </div>
   <div id="noData" class="no-data" hidden>No GRACE observation for this month and dataset. No gap filling has been applied.</div>
   <div id="toast" class="toast" aria-live="polite"></div>
@@ -192,7 +198,9 @@
       <label class="trend-control" for="trendToggle"><input type="checkbox" id="trendToggle"> Show linear trend (dashed)</label>
       
     </div>
-    <div class="plot-wrap" id="plotWrap"><div id="plot" role="img" aria-label="Interactive monthly GRACE terrestrial water storage time series"></div></div>
+    <!-- Lightweight native SVG: no external plotting dependency -->
+    <div class="plot-wrap" id="plotWrap"><svg id="plot" role="img"
+      aria-label="Monthly GRACE terrestrial water storage time series" viewBox="0 0 1200 490"></svg></div>
     <div id="trendRates" class="trend-rates" aria-live="polite"></div>
     </div>
     <div id="spatialTabPanel" role="tabpanel" aria-labelledby="tabSpatial" class="analysis-view" hidden>
@@ -245,7 +253,7 @@
         <li><span class="welcome-step-number">1</span><div><strong>Choose a water storage map</strong><p>Choose <b>Original interpolated (5 km)</b>, <b>Downscaled (5 km)</b>, or <b>Thailand downscaled (1 km)</b> from the large buttons on the left. The 1-km option appears only when those files were included in the build.</p></div></li>
         <li><span class="welcome-step-number">2</span><div><strong>Travel through time</strong><p>Choose a year and month at the bottom, or press <b>▶ Play</b> to watch changes. Months without observations are left blank.</p></div></li>
         <li><span class="welcome-step-number">3</span><div><strong>Explore a country, province, or basin</strong><p>Hover to see its name. Click or double-click a boundary to open its easy-to-read <b>Time series</b>, with available datasets and trends selected. For spatial maps, use <b>Technical use</b>.</p></div></li>
-        <li><span class="welcome-step-number">4</span><div><strong>Need more tools?</strong><p>Open <b>Technical use</b> for CSR, GSFC and JPL layers, detailed spatial maps, Plotly charts, metrics, and downloads.</p></div></li>
+        <li><span class="welcome-step-number">4</span><div><strong>Need more tools?</strong><p>Open <b>Technical use</b> for CSR, GSFC and JPL layers, detailed spatial maps, lightweight time-series charts, metrics, and downloads.</p></div></li>
       </ol>
       <div class="welcome-explainer"><strong>Reading the colors</strong><p><span class="welcome-color-low">Warm colors</span> indicate below-average water storage; <span class="welcome-color-high">blue colors</span> indicate above-average storage. These are anomalies relative to a baseline, not floodwater depths.</p></div>
       <p class="welcome-caution"></p>
