@@ -54,7 +54,7 @@ function nextObserved(i,dir=1,layer=st.layer){
 // Avoid speculative full-raster downloads while zooming: satellite tiles must
 // take network priority. The currently displayed raster stays in one Leaflet layer.
 function scheduleWarmMaps(){
- if(!st.playing||st.layer==='none'||!defaultColors())return;
+ if(!st.playing||st.layer==='none'||!defaultColors()|| (useTapBoundaryPopup()&&st.map?._animatingZoom))return;
  const next=nextObserved(st.month,1);
  if(next===null)return;
  const img=new Image();img.decoding='async';img.src=monthPath(st.layer,M.dates[next]);
@@ -128,8 +128,65 @@ function regionFeatures(){
 }
 function openAreaTimeSeries(id){
  if(!region(id))return;
+ st.map?.closePopup();
  chooseRegion(id,false);
  openPublicTimeSeries();
+}
+
+// TOUCH-FRIENDLY BOUNDARY INTERACTION (frontend only; no GRACE data changes).
+// On phones/tablets, a first tap selects the real polygon and shows a small
+// Leaflet popup near the tapped location. Only the popup's Time series button
+// opens the chart. Desktop single/double-click still opens the chart directly.
+function useTapBoundaryPopup(){
+ return Boolean(window.matchMedia?.('(hover: none), (pointer: coarse)').matches) || window.innerWidth <= 700;
+}
+function showTapBoundaryPopup(id, latlng){
+ const r=region(id),map=st.map;
+ if(!r || !map || !window.L)return;
+ chooseRegion(id,false); // Highlight only the existing boundary polygon.
+ // Some mobile browsers synthesize mouseover on tap; prevent a title-only
+ // tooltip from hiding the action button inside the touch popup.
+ map.closeTooltip?.();
+ st.boundaryLayers.get(id)?.layer?.closeTooltip?.();
+
+ const wrapper=document.createElement('div');
+ wrapper.className='grace-touch-popup';
+ const title=document.createElement('strong');
+ title.className='grace-touch-popup-title';
+ title.textContent=r.name||'Selected area';
+ wrapper.append(title);
+
+ const date=M.dates[st.month];
+ const value=R?.[id]?.[st.layer]?.[st.month];
+ const description=document.createElement('div');
+ description.className='grace-touch-popup-value';
+ if(st.layer==='none'){
+  description.textContent=date+' · No GRACE layer selected';
+ }else if(Number.isFinite(value)){
+  description.textContent=date+' · Mean TWSA: '+value.toFixed(2)+' cm';
+ }else{
+  description.textContent=date+' · TWSA unavailable';
+ }
+ wrapper.append(description);
+
+ const action=document.createElement('button');
+ action.type='button';
+ action.className='grace-touch-popup-action';
+ action.textContent='Time series';
+ action.setAttribute('aria-label','Show time series for '+(r.name||'selected area'));
+ action.addEventListener('click',event=>{
+  event.preventDefault();
+  event.stopPropagation();
+  openAreaTimeSeries(id);
+ });
+ wrapper.append(action);
+
+ const b=r.bbox;
+ const where=latlng||(b?L.latLng((b[0]+b[2])/2,(b[1]+b[3])/2):map.getCenter());
+ L.popup({className:'grace-touch-boundary-popup',closeButton:true,
+  closeOnClick:true,autoClose:true,autoPan:true,keepInView:true,
+  maxWidth:290,minWidth:195,autoPanPadding:[18,18]})
+  .setLatLng(where).setContent(wrapper).openOn(map);
 }
 function installBoundaryInteractions(map){
  const features=regionFeatures();if(!features.length)return;
@@ -139,38 +196,88 @@ function installBoundaryInteractions(map){
   // Keep ONE interactive layer for every boundary. The old extra SVG outline
   // could cover the same polygon after the chart was closed and stop re-clicks.
   if(id)st.boundaryLayers.set(id,{layer,feature});
-  layer.bindTooltip(name,{sticky:true,direction:'top',className:'grace-region-tip'});
-  layer.on('mouseover',()=>animateBoundaryHover(layer,feature,true));
-  layer.on('mouseout',()=>animateBoundaryHover(layer,feature,false));
+  if(!useTapBoundaryPopup()){
+   // Desktop: tooltip follows the pointer and cyan highlight animates.
+   layer.bindTooltip(name,{sticky:true,direction:'top',className:'grace-region-tip'});
+   layer.on('mouseover',()=>animateBoundaryHover(layer,feature,true));
+   layer.on('mouseout',()=>animateBoundaryHover(layer,feature,false));
+  }
   layer.on('click',event=>{
    if(!id||!region(id))return;
    if(event.originalEvent)L.DomEvent.stopPropagation(event.originalEvent);
-   openAreaTimeSeries(id);
+   if(useTapBoundaryPopup()){
+    // Leaflet suppresses click following a drag; ordinary touch panning remains.
+    showTapBoundaryPopup(id,event.latlng);
+   }else{
+    openAreaTimeSeries(id);
+   }
   });
   layer.on('dblclick',event=>{
    if(!id||!region(id))return;
    if(event.originalEvent)L.DomEvent.stop(event.originalEvent);
+   // A rapid second tap should not bypass the mobile Time series button.
+   if(useTapBoundaryPopup())return;
    openAreaTimeSeries(id);
   });
  };
  const overview=features.filter(f=>f.properties?.kind!=='level2');
  const detail=features.filter(f=>f.properties?.kind==='level2');
- const options={style:boundaryStyle,interactive:true,bubblingMouseEvents:false,
-                renderer:L.canvas({padding:.4}),onEachFeature:configure};
- st.regions=L.geoJSON({type:'FeatureCollection',features:overview},options).addTo(map);
+ const desktopOptions={style:boundaryStyle,interactive:true,bubblingMouseEvents:false,
+                       renderer:L.canvas({padding:.4}),onEachFeature:configure};
+ st.regions=L.geoJSON({type:'FeatureCollection',features:overview},desktopOptions).addTo(map);
  if(detail.length){
-  const sync=()=>{
-   const show=map.getZoom()>=5.5;
-   // First construct the detailed layer after the user zooms in; this keeps
-   // initial rendering responsive even with thousands of admin-2 features.
-   if(show&&!st.level2Regions){
-     st.level2Regions=L.geoJSON({type:'FeatureCollection',features:detail},options);
-   }
-   if(show&&!map.hasLayer(st.level2Regions))st.level2Regions.addTo(map);
-   else if(!show&&st.level2Regions&&map.hasLayer(st.level2Regions))map.removeLayer(st.level2Regions);
-  };
-  map.on('zoomend',sync);
-  sync();
+  // Large admin-2 GeoJSON collections (e.g. Thailand/Indonesia) are expensive
+  // on low-memory phones. Keep V17 desktop rendering exactly as before, but
+  // on touch devices draw ONLY geometries that intersect the viewport.
+  const touch=useTapBoundaryPopup();
+  if(!touch){
+   const sync=()=>{
+    const show=map.getZoom()>=5.5;
+    if(show&&!st.level2Regions){
+     st.level2Regions=L.geoJSON({type:'FeatureCollection',features:detail},desktopOptions);
+    }
+    if(show&&!map.hasLayer(st.level2Regions))st.level2Regions.addTo(map);
+    else if(!show&&st.level2Regions&&map.hasLayer(st.level2Regions))map.removeLayer(st.level2Regions);
+   };
+   map.on('zoomend',sync);sync();
+  }else{
+   const touchOptions={style:boundaryStyle,interactive:true,bubblingMouseEvents:false,
+    // Leaflet simplifies geometry for DISPLAY only; numeric values are never changed.
+    smoothFactor:2.1,renderer:L.canvas({padding:.12}),onEachFeature:configure};
+   const boundsById=new Map(detail.map(f=>[f.properties?.id,region(f.properties?.id)?.bbox]));
+   let visibleIds=new Set(),lastKey='',pending=0;
+   const sync=()=>{
+    pending=0;
+    // Avoid loading thousands of small polygons at a broad regional view.
+    if(map.getZoom()<6){
+     if(st.level2Regions&&map.hasLayer(st.level2Regions))map.removeLayer(st.level2Regions);
+     for(const id of visibleIds)st.boundaryLayers.delete(id);
+     visibleIds=new Set();lastKey='';st.level2Regions=null;return;
+    }
+    const b=map.getBounds(),pad=.45;
+    const w=b.getWest()-pad,e=b.getEast()+pad,s=b.getSouth()-pad,n=b.getNorth()+pad;
+    const items=detail.filter(f=>{
+     const box=boundsById.get(f.properties?.id);
+     return box && box[1]<=e && box[3]>=w && box[0]<=n && box[2]>=s;
+    });
+    const nextKey=items.map(f=>f.properties?.id).join('|');
+    if(nextKey===lastKey&&st.level2Regions&&map.hasLayer(st.level2Regions))return;
+    const oldLayer=st.level2Regions;
+    if(oldLayer&&map.hasLayer(oldLayer))map.removeLayer(oldLayer);
+    for(const id of visibleIds)st.boundaryLayers.delete(id);
+    visibleIds=new Set(items.map(f=>f.properties?.id));
+    lastKey=nextKey;
+    st.level2Regions=items.length
+      ?L.geoJSON({type:'FeatureCollection',features:items},touchOptions).addTo(map)
+      :null;
+   };
+   const schedule=()=>{
+    if(pending)cancelAnimationFrame(pending);
+    pending=requestAnimationFrame(sync);
+   };
+   map.on('moveend zoomend',schedule);
+   schedule();
+  }
  }
 }
 function initializeMap(){
@@ -181,7 +288,7 @@ function initializeMap(){
  const map=L.map('map',{minZoom:compact?2.5:3,maxZoom:16,zoomSnap:.25,
    worldCopyJump:true,preferCanvas:true,
    maxBounds:[[-26,72],[40,164]],maxBoundsViscosity:.9});st.map=map;
- const opt={maxNativeZoom:17,maxZoom:19,updateWhenIdle:true,keepBuffer:2,
+ const opt={maxNativeZoom:17,maxZoom:19,updateWhenIdle:true,keepBuffer:useTapBoundaryPopup()?1:2,
    attribution:'Tiles © Esri and imagery/data contributors'};
  st.base={
    satellite:L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',opt),
@@ -1006,6 +1113,30 @@ function updateTechnicalMetrics(){
 
 function controls(){
  // Simple interface for all visitors; technical settings remain collapsed.
+ // Phone-only collapsible datasets: reduce map obstruction and accidental lag.
+ // Desktop always keeps the three big buttons and opacity slider expanded.
+ const quickToggle=$('quickLayerToggle');
+ const quickPanel=$('quickLayerContent');
+ const quickCurrent=$('quickLayerCurrent');
+ const quickNav=document.querySelector('.quick-layers');
+ const isPhoneQuick=()=>window.innerWidth<=700;
+ function setQuickOpen(open){
+  if(!quickToggle||!quickPanel||!quickNav)return;
+  const expanded=isPhoneQuick()&&Boolean(open);
+  quickNav.classList.toggle('mobile-open',expanded);
+  quickToggle.setAttribute('aria-expanded',String(expanded));
+ }
+ function updateQuickLabel(){
+  if(quickCurrent)quickCurrent.textContent=
+   ({tws_m:'Downscaled GRACE (5 km, SEA)',obs_m:'Interpolated GRACE (5 km, SEA)',
+     tws_m_1km:'Downscaled GRACE (1 km, Thailand)'})[st.layer] || 'Other GRACE dataset';
+ }
+ quickToggle?.addEventListener('click',()=>setQuickOpen(quickToggle.getAttribute('aria-expanded')!=='true'));
+ document.addEventListener('pointerdown',ev=>{
+  if(isPhoneQuick()&&quickToggle?.getAttribute('aria-expanded')==='true' &&
+     !ev.target.closest('.quick-layers'))setQuickOpen(false);
+ },{capture:true});
+ updateQuickLabel();setQuickOpen(false);
  function setTechnical(open){
   $('technicalContent').hidden=!open;
   $('technicalToggle').setAttribute('aria-expanded',String(open));
@@ -1043,6 +1174,7 @@ function controls(){
  const chooseSimple=layer=>{
   $('layerSelect').value=layer;
   $('layerSelect').dispatchEvent(new Event('change'));
+  if(isPhoneQuick())setQuickOpen(false);
  };
  $('quickDownscaled').addEventListener('click',()=>chooseSimple('tws_m'));
  $('publicOpacity').addEventListener('input',e=>{
@@ -1136,7 +1268,7 @@ function controls(){
   elem.className=has(st.layer,i)?'observed':'';elem.addEventListener('click',()=>setMonth(i));$('availability').append(elem);
  });
  $('layerSelect').addEventListener('change',e=>{
-   stopPlayback();st.layer=e.target.value;
+   stopPlayback();st.layer=e.target.value;updateQuickLabel();
    for(const [id,key] of [['quickDownscaled','tws_m'],['quickOriginal','obs_m'],['quickDownscaled1km','tws_m_1km']]){
      $(id).classList.toggle('active',st.layer===key);
      $(id).setAttribute('aria-pressed',String(st.layer===key));
