@@ -29,6 +29,15 @@
   </div>
 
   <nav class="quick-layers" aria-label="Quick water storage map selection">
+    <!-- Mobile only: tap to expand datasets and opacity; desktop stays expanded. -->
+    <button id="quickLayerToggle" class="quick-mobile-toggle" type="button"
+            aria-controls="quickLayerContent" aria-expanded="false">
+      <span class="quick-mobile-title">Explore water storage
+        <small id="quickLayerCurrent">Downscaled GRACE (5 km, SEA)</small>
+      </span>
+      <span class="quick-mobile-chevron" aria-hidden="true">⌄</span>
+    </button>
+    <div id="quickLayerContent" class="quick-layer-content">
     <div class="quick-caption">Explore water storage</div>
     <button id="quickOriginal" type="button" aria-pressed="false" class="quick-choice">
       <span class="quick-icon" aria-hidden="true">◉</span><span>Interpolated GRACE (5 km, SEA)</span>
@@ -45,6 +54,7 @@
     </div>
     <input type="range" id="publicOpacity" min="0" max="100" value="85" step="5"
            aria-label="GRACE overlay opacity">
+    </div>
   </nav>
 
   <aside class="panel technical-panel" id="panel" aria-label="Technical settings">
