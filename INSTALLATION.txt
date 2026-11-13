@@ -1,0 +1,16 @@
+GRACE Explorer — Welcome Guide behavior update
+
+1. The Welcome Guide does NOT open automatically on desktop, tablet, or mobile.
+2. Desktop: click "? Guide" for the existing manual modal dialog.
+3. Phone (width <=640px): click "? Guide" for a compact dropdown instead.
+4. Tap outside the phone dropdown or tap X / Start exploring to dismiss.
+5. No longer shows the obsolete "Don't show automatically again" checkbox.
+6. The orange focus ring around the X no longer appears on initial opening.
+7. All Leaflet, NetCDF-derived data, time-series and Technical use behavior is unchanged.
+
+To install without Python:
+- Copy app.js, index.html, and style.css into your generated dashboard/grace_site/ folder.
+- Also copy them into dashboard/web/ if you want future rebuilds to keep the update.
+- Leave data/, maps/, assets/ and vendor/ untouched.
+- Refresh browser with Ctrl+F5.
+- For GitHub Pages, replace the same files in your published repository and commit.

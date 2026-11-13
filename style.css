@@ -1,0 +1,1232 @@
+/* ============================================================================
+   GRACE EXPLORER V30 — CSS EDITING GUIDE (COMMENTS ONLY)
+   ============================================================================
+   IMPORTANT: All original CSS rules, properties, values, and their order below
+   remain UNCHANGED. These notes are here only to explain the design.
+
+   HOW TO FIND THINGS (press Ctrl+F in your text editor):
+
+   1. Dataset buttons:         .quick-choice
+      - Desktop text:          .quick-choice near "V26 — public-first" (17px)
+      - Tablet (<=880px):      .quick-choice inside @media(max-width:880px) (15px)
+      - Mobile (<=640px):      .quick-choice inside V27 @media(max-width:640px)
+                               (14px !important)
+      - Small phone (<=390px): .quick-choice inside @media(max-width:390px)
+                               (12px !important)
+   2. Box heading:             .quick-caption ("Explore water storage")
+   3. Dataset box placement:   .quick-layers
+   4. Public opacity:          .public-opacity-row and #publicOpacity
+   5. Technical-use panel:     .technical-panel / .technical-toggle
+   6. Timeline:                .timeline / #dateLabel / .pager / #monthSlider
+   7. Public time-series:      .public-time-dialog / #publicPlot
+   8. Dataset legend:          .public-legend-button
+   9. Trend-value legend:      .public-trend-values / .trend-value-chip
+  10. Logo & partners:         .gravimetry-brand / .partner-logos
+  11. Coordinates:             .cursor-coordinates
+  12. Welcome guide:           .welcome-dialog
+  13. Zoom button sizing:      .leaflet-control-zoom a
+  14. Mobile appearance:       @media(max-width:640px) and @media(max-width:390px)
+
+   WHY RULES REPEAT: V30 retains earlier version styles and adds overrides later.
+   CSS uses the cascade. Later matching declarations and !important can win;
+   editing an earlier .quick-choice font-size may not affect small screens.
+
+   NOTE: Map bounds, the dataset values, boundary geometry and actual Leaflet
+   zoom behavior are controlled by JavaScript/Python, not by this CSS file.
+   ============================================================================ */
+
+/* EDITING NOTE: THEME VARIABLES — main colors and shared design tokens; modifying these affects many controls. */
+:root{--navy:#0c2136;--edge:#3b5971;--text:#eff8ff;--muted:#b8cddd;--blue:#79d6ed}
+*{box-sizing:border-box}
+/* EDITING NOTE: GLOBAL TYPOGRAPHY — default font family, text color, and body background. */
+html,body{height:100%;width:100%;margin:0;font-family:'Segoe UI',Arial,sans-serif;color:var(--text);background:#dde9ed}
+button,select,input{font:inherit}button{cursor:pointer}button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+/* EDITING NOTE: MAP CANVAS — background and the full-page Leaflet map container. */
+#map{position:absolute;inset:0;z-index:0;background:#dae7eb}
+.leaflet-container{background:#dae7eb!important;font-family:inherit!important}
+/* EDITING NOTE: ZOOM BUTTON APPEARANCE — change width/height/font here; zoom limits live in app.js. */
+.leaflet-control-zoom a{width:39px!important;height:39px!important;line-height:39px!important;font-size:24px!important}
+.leaflet-control-attribution{background:rgba(255,255,255,.92)!important;font-size:11px!important}
+/* EDITING NOTE: SHARED DARK PANELS — common border, background, and shadow for panel/timeline/analysis. */
+.panel,.timeline,.drawer{position:absolute;background:rgba(9,29,48,.96);border:1px solid #9db5c04d;box-shadow:0 8px 28px #04101e55;border-radius:14px;z-index:600}
+.panel{top:17px;right:18px;width:330px;padding:20px;max-height:calc(100vh - 240px);overflow:auto}
+/* EDITING NOTE: TECHNICAL PANEL HEADING — text size for advanced settings, subject to later overrides. */
+.panel h1{font-size:19px;margin:0 0 16px;letter-spacing:.07em;color:#b9f1fc}
+.panel label{display:block;font-size:14px;font-weight:700;color:#dcecf6;margin:13px 0 8px}
+/* EDITING NOTE: DROPDOWNS — select box font, border, padding, and background. */
+.panel select,.selectors select{background:#263f58;border:1px solid #678399;border-radius:8px;color:white;padding:9px 10px;font-size:15px;width:100%;min-height:43px}
+.muted{font-size:14px;line-height:1.45;color:var(--muted)}
+#layerInfo{margin:10px 0 15px}
+.flex{display:flex;align-items:center;gap:8px}.between{justify-content:space-between}
+/* EDITING NOTE: TECHNICAL OPACITY SLIDER — public slider has separate #publicOpacity rules below. */
+#opacity{width:100%;accent-color:var(--blue);margin:4px 0 7px}
+.line{height:1px;background:#7894a545;margin:13px 0 16px}
+/* EDITING NOTE: TECHNICAL TWSA COLOR BAR — changes its appearance, not the data or palette computation. */
+.legend-label{font-size:14px}.gradient{height:15px;margin-top:11px;border-radius:2px;border:1px solid #ffffff77}
+.legend-ticks{font-size:13px;margin-top:7px}.legend-note{font-size:12px;color:#b4cad8;margin-top:9px}
+.text-button{width:100%;background:none;color:#9fe7f6;border:0;text-align:left;padding:17px 0 12px;font-size:14px}
+.chart-button{width:100%;padding:13px 12px;border-radius:9px;border:1px solid #8bd2e6;background:#204c66;color:white;font-size:17px;font-weight:700}
+.chart-button:hover{background:#326b85}
+.selected-point{position:absolute;left:65px;bottom:23px;z-index:570;background:#ffffffef;color:#334a5c;border-radius:9px;border:1px solid #b8c8d2;padding:10px 12px;display:flex;align-items:center;gap:10px;font-weight:700;box-shadow:0 5px 20px #24425a44}
+.selected-point[hidden]{display:none}.selected-point button{background:none;border:0;font-size:22px;color:#607888}
+.red-dot{width:11px;height:11px;border-radius:50%;background:#e9233b;display:inline-block;box-shadow:0 0 0 3px #f1b9c1}
+.no-data{position:absolute;top:20px;left:55px;z-index:610;background:#74352bee;border-radius:8px;padding:10px 15px;font-size:15px;max-width:440px}
+.no-data[hidden]{display:none}.fatal{position:absolute;z-index:900;top:38%;left:25%;padding:20px;background:#a43c34;color:white}
+.toast{position:absolute;z-index:800;bottom:176px;left:50%;transform:translateX(-50%);padding:10px 16px;background:#102e47;color:white;border-radius:8px;opacity:0;pointer-events:none}.toast.show{opacity:1}
+/* EDITING NOTE: MONTH/YEAR NAVIGATOR — timeline location and outer dimensions; later responsive overrides apply. */
+.timeline{bottom:16px;right:18px;width:min(755px,calc(100vw - 395px));padding:15px 18px 12px}
+.timeline-first{display:flex;align-items:center;gap:18px;justify-content:space-between}
+#dateLabel{font-size:22px;white-space:nowrap}.selectors{display:flex;align-items:center;gap:9px}
+.selectors label{font-size:16px;color:#e8f5fd}.selectors select{width:93px;font-size:17px}
+/* EDITING NOTE: PREVIOUS / PLAY / NEXT BUTTONS — pager sizes and colors. */
+.pager{display:flex;gap:7px}.pager button{border:1px solid #5b7a90;background:#24435e;color:white;width:42px;height:43px;border-radius:8px;font-size:24px}
+.pager #play{background:#f4c66e;color:#25384b;font-size:17px;font-weight:800}
+#monthSlider{width:100%;accent-color:#76d8e8;margin:13px 0 6px}.availability{display:flex;height:10px;gap:1px}
+.availability span{height:7px;min-width:1px;flex:1;border-radius:1px;background:#79869b66;cursor:pointer}.availability span.observed{background:#55c7b0}.availability span.current{outline:2px solid #fff1c0}
+.subtle{font-size:12px;color:#c9dce8;margin-top:7px}
+/* EDITING NOTE: TECHNICAL ANALYSIS WINDOW — legacy base dimensions; later .drawer rules override on different screens. */
+.drawer{top:17px;right:18px;width:min(790px,calc(100vw - 36px));max-height:calc(100vh - 215px);overflow:auto;padding:23px;transform:translateX(calc(100% + 30px));opacity:0;visibility:hidden;transition:transform .18s,opacity .18s;z-index:700}
+.drawer.open{transform:translateX(0);opacity:1;visibility:visible}
+body:has(.drawer.open) .panel{visibility:hidden}
+.drawer-heading{display:flex;justify-content:space-between;gap:12px;align-items:start}.eyebrow{font-size:13px;font-weight:800;color:#80ddec;letter-spacing:.09em}
+.drawer-heading h2{font-size:25px;line-height:1.2;margin:5px 0 0}
+#closeChart,.modal-header button{background:#24415a;color:#fff;border:1px solid #647e95;border-radius:8px;font-size:24px;width:37px;height:37px}
+#studyInfo{margin:9px 0 15px}
+.series-toggles{display:flex;flex-wrap:wrap;gap:13px 18px;margin:4px 0 15px}
+.series-toggles label{font-size:15px;font-weight:600;display:flex;gap:7px;align-items:center;cursor:pointer}
+.series-toggles input{accent-color:#74d3ea}.swatch{width:17px;height:5px;border-radius:4px}
+.plot-wrap{border:1px solid #9cb6c044;background:#0a223a;border-radius:10px;padding:5px;position:relative;min-height:260px}
+#plot{display:block;width:100%;height:auto;touch-action:pan-y}.plot-tooltip{position:absolute;padding:10px 12px;line-height:1.6;font-size:14px;background:#061727f7;border:1px solid #a1bbc2;color:white;border-radius:8px;pointer-events:none;z-index:2}
+.chart-note{margin:11px 0 18px}
+.drawer-buttons{display:flex;gap:12px;margin-top:16px}.drawer-buttons button{flex:1;padding:11px;color:white;background:#294d68;border:1px solid #7e9caa;border-radius:8px;font-size:15px;font-weight:700}
+#csvButton{background:#237a95}
+/* EDITING NOTE: ABOUT DIALOG — base modal appearance; separate welcome/public analysis styles appear later. */
+dialog{background:#0e2942;color:#eaf6ff;border:1px solid #6b90a3;border-radius:14px;max-width:620px;padding:22px;box-shadow:0 10px 50px #011727}
+dialog::backdrop{background:#061524bf}.modal-header{display:flex;align-items:start;gap:10px;justify-content:space-between}.modal-header h2{font-size:23px;margin:0}dialog p{line-height:1.6;font-size:15px}
+@media(max-width:940px){.timeline{width:min(660px,calc(100vw - 25px));bottom:12px;right:12px}.panel{width:280px;right:12px;padding:14px;max-height:calc(100vh - 225px)}.timeline-first{flex-wrap:wrap}.drawer{max-height:calc(100vh - 220px)}}
+@media(max-width:600px){.panel{top:9px;right:9px;width:235px;max-height:calc(100vh - 230px)}.panel h1{font-size:16px}.timeline{width:calc(100% - 18px);right:9px;bottom:9px}.timeline-first{gap:9px}#dateLabel{font-size:18px}.selectors select{width:74px}.selectors label{font-size:13px}.pager button{width:35px}.drawer{top:8px;right:8px;width:calc(100% - 16px);max-height:calc(100vh - 215px);padding:15px}.selected-point{bottom:184px;left:10px}}
+
+/* EDITING NOTE: HISTORICAL V6 RULES — retained to avoid changing appearance; see later overrides first. */
+/* ================= GRACE Explorer V6 refinements ================= */
+html,body{overflow:hidden;max-width:100%;overscroll-behavior:none}
+#map{position:fixed;inset:0;width:100vw;height:100dvh;overflow:hidden}
+.brand{position:absolute;z-index:570;top:15px;left:65px;display:flex;align-items:center;gap:10px;
+  padding:10px 15px 10px 10px;border-radius:12px;background:rgba(6,29,49,.9);
+  border:1px solid #a8d5e24d;box-shadow:0 4px 18px #03142150;max-width:calc(100vw - 430px)}
+.brand-emblem{display:inline-grid;place-items:center;width:42px;height:42px;flex:none;
+  color:#eafaff;font-weight:900;font-size:26px;border:3px solid #5dd3eb;border-radius:50%;
+  background:linear-gradient(150deg,#135477,#11243b)}
+.brand strong{display:block;letter-spacing:.045em;font-size:18px;white-space:nowrap;line-height:1.15}
+.brand strong span{color:#86dfed}
+.brand small{display:block;color:#b9d7e4;font-size:12px;margin-top:3px;white-space:nowrap}
+.panel{max-height:calc(100dvh - 170px);padding:18px}
+.color-editor{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}
+.panel .color-editor label{font-size:12px;margin:0;line-height:1.3;color:#d5e9f6}
+.color-editor input{width:100%;height:38px;margin-top:5px;padding:7px 9px;font-size:15px;
+  border:1px solid #6e91a7;background:#233e57;color:#fff;border-radius:7px}
+.color-actions{display:flex;gap:8px;margin-top:9px}
+.color-actions button{flex:1;background:#224f6b;color:white;padding:7px;border:1px solid #709eb6;border-radius:6px;font-size:13px}
+.color-actions #applyColors{background:#277995;font-weight:700}
+.color-help{font-size:11px;line-height:1.4;color:#bed7e1;margin:8px 0 0}
+/* EDITING NOTE: COMPACT TIMELINE OVERRIDE — later layout for the bottom month/year navigator. */
+.timeline{bottom:13px;right:14px;width:min(630px,calc(100vw - 28px));padding:10px 14px 8px}
+.timeline-first{gap:10px;justify-content:space-between;flex-wrap:nowrap}
+#dateLabel{font-size:18px;white-space:nowrap}
+.selectors{gap:6px;flex-wrap:nowrap}
+.selectors label{font-size:13px}
+.selectors select{width:76px;min-height:34px;font-size:15px;padding:5px 7px}
+#monthSelect{width:72px}
+.pager{gap:4px}.pager button{width:33px;height:34px;font-size:20px}
+.pager #play{font-size:15px}
+#monthSlider{margin:8px 0 2px}
+.availability{height:5px}.availability span{height:3px}
+.subtle{font-size:10px;margin-top:5px}
+.no-data{max-width:calc(100vw - 80px)}
+#aboutDialog{width:min(700px,95vw);max-height:85dvh;overflow:auto}
+#aboutDialog a{color:#86e0f5}
+#aboutDialog p{font-size:15px;margin:12px 0;line-height:1.57}
+#aboutDialog code{color:#e1f6fe}
+/* EDITING NOTE: TABLET BREAKPOINT (940px) — adjustments for screens at or under this width. */
+@media(max-width:940px){
+ .brand{top:12px;left:62px;max-width:calc(100vw - 360px)}
+ .brand strong{font-size:15px}
+ .brand small{font-size:11px}
+ .timeline{width:min(580px,calc(100vw - 20px));bottom:10px;right:10px}
+ .panel{max-height:calc(100dvh - 165px)}
+}
+/* EDITING NOTE: SMALL-SCREEN BREAKPOINT (620px) — older rules, some superseded by newer V27 rules. */
+@media(max-width:620px){
+ .brand{top:8px;left:55px;padding:6px 9px;gap:6px;max-width:calc(100vw - 270px)}
+ .brand-emblem{width:30px;height:30px;font-size:19px;border-width:2px}
+ .brand strong{font-size:12px}
+ .brand small{display:none}
+ .panel{right:8px;top:8px;width:230px;padding:12px;max-height:calc(100dvh - 164px)}
+ .timeline{width:calc(100vw - 16px);right:8px;bottom:8px;padding:8px 9px}
+ .timeline-first{gap:6px}
+ #dateLabel{font-size:14px}
+ .selectors{gap:3px}.selectors label{font-size:10px}
+ .selectors select{width:59px;font-size:12px;padding:3px;min-height:30px}
+ #monthSelect{width:55px}
+ .pager button{width:27px;height:30px;font-size:16px}
+ .color-editor{gap:5px}.color-editor input{font-size:13px}
+ .color-actions{gap:4px}.color-actions button{font-size:11px;padding:5px}
+}
+
+/* Layer settings and analysis button are kept visible in a compact panel. */
+.panel{display:flex;flex-direction:column;overflow:hidden}
+.panel-scroll{overflow:visible;flex:initial;min-height:0;padding-right:0}
+.chart-button{flex-shrink:0;margin-top:11px}
+/* Hiding closed drawer completely prevents unintended horizontal scrollbars. */
+.drawer{display:none;transform:none;opacity:1;visibility:visible;transition:none}
+.drawer.open{display:block;transform:none;opacity:1;visibility:visible}
+
+.brand-image{display:block;height:47px;width:auto;max-width:245px;object-fit:contain}
+@media(max-width:620px){.brand-image{height:34px;max-width:155px}}
+
+/* V7: map coordinates near the lower-left Leaflet scale. */
+/* EDITING NOTE: COORDINATE DISPLAY — text style and placement; last partner-logo overrides are near the end. */
+.cursor-coordinates{
+  position:absolute;left:12px;bottom:43px;z-index:650;
+  border:1px solid #85b0c277;border-radius:7px;
+  background:rgba(8,32,51,.91);padding:8px 11px;
+  color:#ecf8ff;font-size:14px;font-weight:600;line-height:1.25;
+  font-variant-numeric:tabular-nums;pointer-events:none;
+  box-shadow:0 3px 14px #06152255;
+}
+@media(max-width:620px){
+ .cursor-coordinates{bottom:148px;left:9px;font-size:12px;padding:6px 9px;max-width:calc(100vw - 245px)}
+}
+
+/* V8 — optional trends and chart export */
+.chart-controls{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:5px 0 13px}
+.trend-control{display:flex;align-items:center;gap:9px;font-size:16px;font-weight:700;cursor:pointer;color:#e4f4ff}
+.trend-control input{width:18px;height:18px;accent-color:#79d6ed}
+.chart-controls .hint{color:#a8c7d9;font-size:13px}
+.trend-rates{display:flex;flex-wrap:wrap;gap:9px 20px;padding-top:10px;font-size:14px;font-weight:650}
+.drawer-buttons{flex-wrap:wrap}.drawer-buttons button{min-width:150px}
+
+@media(max-width:620px){.drawer-buttons{flex-direction:column}.drawer-buttons button{width:100%}}
+
+
+/* V9 — compact layer controls without an internal scrollbar.
+   All essential settings remain visible on normal desktop screens.
+   Keep the chart trigger in the flow, not in a scroller. */
+.panel{
+  top:12px;right:14px;width:310px;
+  padding:14px 15px 12px;
+  max-height:none;
+  display:flex;flex-direction:column;
+  overflow:visible;
+  gap:0;
+}
+.panel-scroll{
+  overflow:visible;
+  padding:0;
+  min-height:0;
+  flex:initial;
+/* EDITING NOTE: TECHNICAL CONTROL DENSITY — advanced labels, paddings, color inputs, and buttons. */
+}
+.panel h1{font-size:16px;line-height:1.2;margin:0 0 10px;letter-spacing:.045em}
+.panel label{font-size:12px;line-height:1.2;margin:8px 0 4px}
+.panel select{min-height:34px;padding:5px 8px;font-size:13px;border-radius:7px}
+#layerInfo{font-size:12px;line-height:1.35;margin:6px 0 8px}
+.panel .flex.between>label{margin:8px 0 4px}
+#opacity{margin:2px 0 1px;height:18px}
+.panel .line{margin:8px 0 10px}
+.legend-label{font-size:12px}
+.gradient{height:12px;margin-top:7px}
+.legend-ticks{font-size:11px;margin-top:4px}
+.legend-note{font-size:10px;margin-top:3px}
+.color-editor{gap:8px;margin-top:8px}
+.panel .color-editor label{font-size:11px;margin:0;line-height:1.2}
+.color-editor input{height:32px;margin-top:4px;padding:5px 8px;font-size:13px}
+.color-actions{gap:7px;margin-top:7px}
+.color-actions button{min-height:30px;padding:5px 7px;font-size:12px}
+.panel .text-button{padding:9px 0 5px;font-size:12px}
+.panel .chart-button{font-size:14px;padding:10px 8px;min-height:40px;margin-top:6px}
+/* The optional analytic drawer retains its own scrolling on very short screens,
+   because chart annotations and data-export buttons must never be clipped. */
+.chart-controls{justify-content:flex-start}
+
+@media (max-height:760px){
+ .panel{top:7px;padding:10px 12px 9px;width:298px}
+ .panel h1{font-size:15px;margin-bottom:7px}
+ .panel label{margin:5px 0 3px;font-size:11px}
+ .panel select{min-height:31px;padding:4px 7px;font-size:12px}
+ #layerInfo{font-size:11px;line-height:1.25;margin:4px 0 5px}
+ .panel .line{margin:5px 0 7px}
+ .color-editor{margin-top:5px}
+ .color-editor input{height:29px;margin-top:3px}
+ .color-actions{margin-top:5px}
+ .color-actions button{min-height:27px;padding:3px 6px}
+ .panel .text-button{padding:6px 0 3px}
+ .panel .chart-button{min-height:35px;padding:7px 6px;margin-top:4px}
+ .gradient{margin-top:5px}
+ .legend-note{margin-top:2px}
+}
+@media(max-height:650px){
+ /* The explanatory text stays accessible through About; hide duplicate
+    on-panel description when the viewport is exceptionally short. */
+ #layerInfo{display:none}
+ .legend-note{display:none}
+ .panel h1{margin-bottom:5px}
+}
+@media(max-width:620px){
+ .panel{right:7px;top:7px;width:min(245px,calc(100vw - 65px));padding:9px 10px}
+ .panel h1{font-size:14px;margin-bottom:6px}
+ .panel label{font-size:11px;margin:5px 0 3px}
+ .panel select{font-size:12px;min-height:30px}
+ #layerInfo{font-size:11px;line-height:1.23}
+ .panel .chart-button{font-size:12px;min-height:34px;padding:6px 5px}
+ .color-editor{gap:4px}
+ .color-editor input{font-size:12px;padding:4px}
+ .color-actions button{font-size:10px;padding:4px 2px}
+}
+
+/* V9-based V12: preserve V9's ONE-COLUMN time-series panel (not the later side-by-side version).
+   The chart fits above controls on normal desktop screens. */
+/* EDITING NOTE: TECHNICAL ANALYSIS RESPONSIVENESS — keeps charts/buttons inside the available height. */
+.drawer{top:12px;right:14px;max-height:calc(100dvh - 24px);
+  width:min(810px,calc(100vw - 28px));overflow:hidden;padding:16px 19px 14px}
+.drawer.open{display:flex;flex-direction:column;gap:5px}
+.drawer-heading{flex:none}
+.drawer-heading h2{font-size:22px;margin-top:3px}
+#studyInfo{flex:none;margin:4px 0 8px;font-size:13px}
+.series-toggles{flex:none;gap:7px 14px;margin:3px 0 6px}
+.series-toggles label{font-size:13px}
+.chart-controls{flex:none;margin:0 0 6px}
+.trend-control{font-size:13px}
+.plot-wrap{flex:0 1 auto;min-height:0;margin:0}
+#plot{height:min(43dvh,325px);width:100%;display:block}
+.trend-rates{flex:none;padding-top:5px;font-size:12px;gap:5px 12px}
+.drawer-buttons{flex:none;gap:9px;margin-top:8px}
+.drawer-buttons button{padding:9px 8px;font-size:13px;min-width:0}
+@media (max-height:650px) and (min-width:621px){
+ .drawer{top:6px;max-height:calc(100dvh - 12px);padding:9px 14px}
+ .drawer-heading h2{font-size:19px}
+ #studyInfo{margin:2px 0 4px}
+ #plot{height:min(39dvh,255px)}
+ .series-toggles{gap:4px 10px}
+ .drawer-buttons{margin-top:3px}
+}
+/* Small screens should remain usable instead of clipping the chart/actions. */
+@media (max-width:620px){
+ .drawer{top:7px;right:7px;width:calc(100vw - 14px);
+  max-height:calc(100dvh - 14px);overflow:auto;padding:12px}
+ .drawer.open{display:block}
+ #plot{height:auto;max-height:320px}
+ .drawer-buttons button{min-width:unset}
+}
+
+/* V13: Classic SVG chart, no Plotly or on-map export button. */
+#plot{display:block;width:100%;height:auto;max-height:min(43dvh,325px);aspect-ratio:1020/440;touch-action:auto;cursor:crosshair}
+.plot-wrap{position:relative;min-height:0}
+.plot-tooltip{position:absolute;min-width:200px;max-width:240px;padding:9px 11px;background:#061727f5;
+  border:1px solid #a1bbc2;border-radius:8px;pointer-events:none;color:#eaf6ff;
+  font-size:13px;line-height:1.55;z-index:4}
+@media(max-width:700px){#plot{max-height:none}}
+
+/* V14: in-panel scientific spatial map directly below the classic time series. */
+.drawer{width:min(930px,calc(100vw - 28px));padding:11px 18px 11px;
+  top:7px;max-height:calc(100dvh - 14px);overflow-y:auto;overflow-x:hidden}
+.drawer-heading h2{font-size:20px}
+#studyInfo{font-size:12px;margin:2px 0 3px}
+.series-toggles{gap:4px 12px;margin:2px 0 3px}
+.chart-controls{margin:0 0 2px}
+#plot{max-height:min(26dvh,215px);aspect-ratio:1020/440}
+.plot-wrap{min-height:0;padding:2px}
+.trend-rates{padding:2px 0;font-size:11px}
+.region-spatial{background:#f9fbfe;border:1px solid #7e9cb0;border-radius:10px;
+  padding:4px 7px 3px;margin:3px 0 1px;color:#132f4d;min-height:0}
+.region-spatial-heading{text-align:center;font-weight:700;font-size:13px;line-height:1.25;
+  padding:3px 0 1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#regionSpatialCanvas{display:block;width:100%;height:auto;max-height:min(29dvh,250px);
+  aspect-ratio:1120/380;object-fit:contain;image-rendering:auto;background:white}
+.region-spatial-note{margin:0 0 2px;text-align:center;color:#51677a;font-size:11px}
+.drawer-buttons{margin-top:5px;gap:8px}
+.drawer-buttons button{padding:7px;font-size:12px}
+@media(max-height:690px){
+ #plot{max-height:170px}
+ #regionSpatialCanvas{max-height:205px}
+ .drawer-heading h2{font-size:18px}
+}
+@media(max-width:620px){
+ .drawer{width:calc(100vw - 12px);right:6px;top:6px;max-height:calc(100dvh - 12px);padding:10px}
+ #plot{max-height:210px}
+ #regionSpatialCanvas{max-height:220px}
+ .region-spatial-heading{font-size:11px}
+}
+
+/* Region and spatial-product choices remain accessible while the map-layer
+   panel is hidden behind the time-series analysis drawer. */
+.drawer-heading{align-items:center;gap:10px}
+.drawer-heading>div:first-child{flex:1;min-width:160px}
+.chart-selectors{display:flex;align-items:center;gap:7px;max-width:49%;flex:none}
+.chart-selectors select{min-width:0;width:50%;max-width:240px;background:#243f58;color:#f3fbff;
+  border:1px solid #7795ad;border-radius:7px;padding:7px;font-size:12px}
+@media(max-width:760px){
+ .drawer-heading{flex-wrap:wrap}
+ .chart-selectors{order:3;width:100%;max-width:100%}
+ .chart-selectors select{flex:1;max-width:none}
+}
+
+/* V15: Figures use their native aspect ratios, not compressed tall SVGs.
+   Prevent wasted white margins and keep geographic axes readable. */
+.drawer{width:min(1120px,calc(100vw - 22px));padding:10px 16px;
+  top:6px;max-height:calc(100dvh - 12px);overflow-y:auto;overflow-x:hidden}
+.drawer-heading h2{font-size:23px}
+.series-toggles label,.trend-control{font-size:15px}
+#plot{width:100%;height:auto;max-height:none;aspect-ratio:1080/300;display:block}
+.plot-wrap{width:100%;min-height:0;padding:0;margin:0}
+.region-spatial{padding:5px 6px 6px;margin:4px 0 2px;display:flex;
+ flex-direction:column;align-items:center;gap:2px}
+.region-spatial-heading{font-size:16px;line-height:1.3;padding:3px 2px;white-space:normal}
+#regionSpatialCanvas{width:auto;height:auto;max-height:min(38dvh,310px);
+  max-width:100%;aspect-ratio:auto;object-fit:contain;image-rendering:auto;background:#fff}
+.drawer-buttons{margin-top:4px}
+@media(max-height:720px){
+ .drawer{padding:7px 11px}
+ #plot{max-height:none}
+ #regionSpatialCanvas{max-height:min(39dvh,285px)}
+ .drawer-heading h2{font-size:19px}
+ .series-toggles label,.trend-control{font-size:13px}
+}
+@media(max-width:620px){
+ #regionSpatialCanvas{max-height:36dvh}
+ .region-spatial-heading{font-size:13px}
+}
+
+
+/* ======================================================================
+   V16 — responsive, publication-inspired time-series + spatial figure
+   Auto-flow and containment prevent chart axes, maps and buttons overlapping.
+   Small screens scroll vertically rather than crop scientific figures.
+   ====================================================================== */
+/* EDITING NOTE: TECHNICAL DRAWER MAIN LAYOUT — responsive analysis window sizing and arrangement. */
+.drawer{
+  box-sizing:border-box;position:fixed;inset:clamp(6px,1.3vh,16px) clamp(6px,1.3vw,16px) auto auto;
+  width:min(1160px,calc(100vw - 2*clamp(6px,1.3vw,16px)));
+  max-width:calc(100vw - 12px);
+  max-height:calc(100dvh - 2*clamp(6px,1.3vh,16px));
+  padding:clamp(10px,1.3vw,20px);
+  border:1px solid #759eb2a0;border-radius:16px;
+  background:linear-gradient(145deg,rgba(7,30,51,.98),rgba(8,34,55,.97));
+  box-shadow:0 22px 80px #0015239e;
+  overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain;
+  scrollbar-width:thin;scrollbar-color:#60859a75 transparent;
+  contain:layout;
+}
+.drawer.open{display:flex;flex-direction:column;gap:clamp(5px,.9vh,11px)}
+.drawer-heading{display:grid;grid-template-columns:minmax(0,1fr) minmax(250px,43%) 42px;
+ align-items:start;gap:12px;width:100%;min-width:0}
+.drawer-heading>div:first-child{min-width:0}
+.drawer-heading h2{font-size:clamp(19px,2vw,26px);line-height:1.16;overflow-wrap:anywhere;margin:3px 0 0}
+.eyebrow{font-size:12px;letter-spacing:.1em}
+.chart-selectors{min-width:0;max-width:none;width:100%;align-self:start;gap:7px}
+.chart-selectors select{min-width:0;width:50%;flex:1;font-size:clamp(12px,1.1vw,14px);padding:8px 9px}
+#closeChart{width:42px;height:42px;flex:none;justify-self:end}
+#studyInfo{font-size:clamp(12px,1.15vw,14px);line-height:1.35;margin:0;color:#afcfe1}
+.series-toggles{display:flex;align-items:center;flex-wrap:wrap;gap:7px 16px;margin:0}
+.series-toggles label{font-size:clamp(12px,1.2vw,15px);white-space:nowrap;
+ padding:5px 8px;border-radius:7px;background:#19405b77}
+.series-toggles input{width:15px;height:15px}
+.trend-control{font-size:clamp(12px,1.1vw,14px)}
+.chart-controls{margin:0;min-height:24px}
+.plot-wrap{width:100%;box-sizing:border-box;min-width:0;flex:none;overflow:hidden;
+ background:linear-gradient(180deg,#102b45,#0b233a);border:1px solid #8aaeb95a;
+ padding:clamp(5px,1vw,12px);border-radius:12px}
+#plot{display:block;width:100%;height:auto;max-height:none!important;
+ aspect-ratio:1080/330;overflow:hidden;min-width:0}
+.plot-tooltip{box-sizing:border-box;max-width:min(260px,calc(100% - 12px));font-size:13px;
+ box-shadow:0 8px 26px #0613209c;z-index:3}
+.trend-rates{margin:0;padding:0;min-height:0;font-size:12px;gap:7px 17px}
+.region-spatial{box-sizing:border-box;align-self:center;width:fit-content;max-width:100%;
+ min-width:0;margin:2px auto 0;padding:10px 12px 12px;
+ background:#fff;border:1px solid #bed1de;border-radius:12px;gap:6px;
+ box-shadow:0 6px 24px #01192944;overflow:hidden}
+.region-spatial-heading{max-width:100%;color:#1c3b53;font-size:clamp(14px,1.4vw,18px);
+ padding:2px 6px 0;line-height:1.3;text-align:center;overflow-wrap:anywhere;
+ white-space:normal;text-overflow:clip}
+#regionSpatialCanvas{box-sizing:border-box;display:block;width:auto;max-width:100%;height:auto;
+ max-height:clamp(220px,34dvh,410px);aspect-ratio:auto;object-fit:contain;background:#fff;
+ image-rendering:crisp-edges}
+.drawer-buttons{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;
+ width:100%;margin:3px 0 0;flex:none}
+.drawer-buttons button{min-width:0!important;width:100%;box-sizing:border-box;padding:10px 9px;
+ font-size:clamp(12px,1.05vw,14px);line-height:1.25;
+ min-height:40px;white-space:normal}
+#timePngButton,#spatialPngButton{background:#1d7186;border-color:#84bfd0}
+#timePngButton:hover,#spatialPngButton:hover{background:#298ca0}
+@media(max-height:810px){
+ .drawer.open{gap:5px}
+ .drawer-heading h2{font-size:19px}
+ #plot{aspect-ratio:1080/330}
+ #regionSpatialCanvas{max-height:clamp(145px,29dvh,275px)}
+ .region-spatial{padding:6px 8px}
+ .series-toggles label{padding:3px 6px}
+ .drawer-buttons button{min-height:36px;padding:7px 6px}
+}
+@media(max-width:840px){
+ .drawer{right:7px;top:7px;width:calc(100vw - 14px);max-height:calc(100dvh - 14px);padding:12px}
+ .drawer-heading{grid-template-columns:minmax(0,1fr) 42px}
+ .chart-selectors{grid-column:1 / -1;grid-row:2;order:initial;width:100%;max-width:100%}
+ #closeChart{grid-column:2;grid-row:1}
+ .drawer-buttons{grid-template-columns:repeat(2,minmax(0,1fr))}
+ #regionSpatialCanvas{max-height:none;max-width:100%;height:auto}
+}
+@media(max-width:520px){
+ .drawer{padding:9px}
+ .drawer-heading{gap:7px}
+ .drawer-heading h2{font-size:19px}
+ .chart-selectors{gap:5px}
+ .chart-selectors select{font-size:12px;padding:6px}
+ .plot-wrap{padding:5px}
+ #plot{aspect-ratio:1080/330}
+ .region-spatial{max-width:100%;padding:6px 5px}
+ .region-spatial-heading{font-size:13px}
+ .drawer-buttons{gap:5px}
+ .drawer-buttons button{font-size:12px;padding:8px 4px}
+ .plot-tooltip{font-size:11px;line-height:1.4}
+}
+
+/* Critical flexbox fix: the geographic canvas must reserve its full height.
+   Otherwise the flex algorithm can shrink the white card while its children
+   overflow into the download row when browser windows are shorter. */
+.drawer.open > .region-spatial,
+.drawer.open > .plot-wrap,
+.drawer.open > .drawer-buttons{flex-shrink:0;min-height:max-content}
+.region-spatial{min-height:max-content;flex-shrink:0}
+#regionSpatialCanvas{flex:none}
+@media(min-width:841px){
+ #plot{max-height:clamp(170px,29dvh,275px)!important}
+ #regionSpatialCanvas{max-height:clamp(170px,30dvh,320px)}
+}
+
+/* V17: coherent navy on-screen scientific figures. Export remains white. */
+.region-spatial{background:linear-gradient(180deg,#102b45,#0b233a);border-color:#779eb56b;
+ box-shadow:0 8px 25px #00152345}
+.region-spatial-heading{color:#e3f4ff}
+#regionSpatialCanvas{background:#0b233a}
+/* Keep longer CTA legible in compact panels without clipping or overlap. */
+.chart-button{white-space:normal;line-height:1.25;padding:10px 12px;min-height:40px}
+@media(max-width:620px){.chart-button{font-size:13px}}
+
+/* ===============================================================
+   V18 — accessible public map / optional technical controls
+   Always-visible simple choices, light native boundaries, readable
+   geographic tooltips, and a responsive two-tab analysis dialog.
+   =============================================================== */
+[hidden]{display:none!important}
+html{font-size:16px}
+button,select{touch-action:manipulation}
+button:focus-visible,select:focus-visible{outline:3px solid #f6cb71!important;outline-offset:3px}
+/* EDITING NOTE: LOGO HEADER (LEGACY) — final Gravimetry logo size/position rules are in the V26/V27 sections. */
+.brand{z-index:670;max-width:min(390px,calc(100vw - 100px));border-radius:15px}
+.brand strong{font-size:20px}
+/* EDITING NOTE: PUBLIC QUICK-PICK PANEL — dark box containing public water storage dataset buttons. */
+.quick-layers{
+ position:fixed;top:92px;left:18px;z-index:675;
+ background:rgba(9,30,50,.97);border:1px solid #93bfd1a3;
+ box-shadow:0 6px 25px rgba(0,16,34,.38);
+ border-radius:16px;padding:18px;width:min(303px,calc(100vw - 38px));
+}
+/* EDITING NOTE: PUBLIC BOX TITLE — 'Explore water storage': font-size and bottom spacing (mobile override below). */
+.quick-caption{font-weight:800;letter-spacing:.025em;color:#b5edf7;font-size:17px;margin:0 0 13px}
+/* EDITING NOTE: PUBLIC DATASET BUTTON BASE — border, spacing, weight, height; desktop font-size gets a later override. */
+.quick-choice{
+ width:100%;display:flex;align-items:center;text-align:left;gap:12px;
+ background:#24415a;color:#fff;border:2px solid #587d98;border-radius:12px;
+ padding:13px 15px;min-height:65px;margin:0 0 11px;font-size:17px;
+ font-weight:760;line-height:1.3;
+}
+.quick-choice small{display:block;font-size:13px;line-height:1.4;font-weight:500;color:#c7ddea;margin-top:2px}
+.quick-choice.active,.quick-choice[aria-pressed="true"]{border-color:#8adff7;background:#1b6279;box-shadow:inset 0 0 0 1px #a8e8f5}
+.quick-choice:hover{background:#32627b}
+.quick-icon{width:28px;height:28px;display:grid;place-items:center;font-size:22px;color:#ffe3a3;flex:none}
+.quick-instruction{font-size:14px;line-height:1.5;color:#d6eaf3;margin:8px 2px 0}
+
+/* Technical controls are collapsed by default; expand only on demand. */
+/* EDITING NOTE: TECHNICAL USE PANEL — position/collapsible control layout. Opening/closing logic is in app.js. */
+.panel.technical-panel{
+ position:fixed;top:18px;right:17px;z-index:680;
+ width:315px;max-width:calc(100vw - 36px);
+ background:rgba(9,30,50,.97);border:1px solid #8fbcd099;
+ border-radius:13px;padding:8px;max-height:calc(100dvh - 110px);
+ overflow:visible;box-shadow:0 6px 25px #0515245c;
+}
+.technical-toggle{
+ width:100%;min-height:49px;display:flex;justify-content:space-between;
+ align-items:center;padding:10px 13px;border:1px solid #6bafca;
+ border-radius:9px;background:#1b405d;color:#f4fbff;
+ font-size:18px;font-weight:800;text-align:left;
+}
+.technical-toggle:hover{background:#2b5672}
+.toggle-chevron{font-size:24px;transition:transform .18s ease}
+.technical-toggle[aria-expanded="true"] .toggle-chevron{transform:rotate(180deg)}
+.technical-content{max-height:calc(100dvh - 178px);overflow-y:auto;overscroll-behavior:contain;padding:11px 9px 7px}
+.technical-panel .panel-scroll{overflow:visible}
+.technical-panel .panel-scroll h1{font-size:16px;margin-bottom:10px}
+.technical-panel select{min-height:43px;font-size:16px;padding:8px}
+.technical-panel label{font-size:14px;margin-top:12px}
+.technical-panel .chart-button{font-size:16px;min-height:48px;margin-top:12px}
+.technical-panel .color-actions button{font-size:14px;min-height:41px}
+
+/* Hover: no large overlay, just a clean label following the mouse. */
+.grace-region-tip.leaflet-tooltip{
+ border-radius:9px;padding:9px 13px;background:#0b2a44;
+ color:#fff;border:1px solid #94e9fb;box-shadow:0 5px 16px #06203266;
+ font:750 16px/1.25 'Segoe UI',Arial,sans-serif;
+}
+.grace-region-tip.leaflet-tooltip-top:before{border-top-color:#0b2a44}
+.region-popup-content{color:#21384b;font-family:'Segoe UI',Arial,sans-serif;min-width:255px}
+.region-popup-content strong{display:block;font-size:20px;line-height:1.35;margin-bottom:5px}
+.region-popup-content p{font-size:15px;margin:3px 0 13px;color:#536779}
+.region-popup-actions{display:flex;gap:8px}
+.region-popup-actions button{flex:1;min-height:49px;border-radius:9px;
+ border:1px solid #0e5a75;background:#197c9c;color:#fff;
+ padding:9px 8px;font-weight:800;font-size:15px}
+.region-popup-actions button:hover{background:#11637f}
+.leaflet-popup-content{margin:15px 16px}
+/* EDITING NOTE: LEAFLET CONTROL SPACING — changes visual offsets, not animation or raster scaling. */
+.leaflet-control-zoom{margin-bottom:60px!important}
+.cursor-coordinates{bottom:105px;left:14px}
+
+/* Dialog: the same content remains, but only one graph at a time. */
+.analysis-backdrop{position:fixed;inset:0;background:rgba(1,14,29,.67);z-index:780}
+/* EDITING NOTE: TECHNICAL DRAWER ADVANCED STYLE — later definitions take precedence over base ones. */
+.drawer,.drawer.open{
+ position:fixed!important;top:50%!important;left:50%!important;right:auto!important;bottom:auto!important;
+ transform:translate(-50%,-50%)!important;
+ z-index:820;width:min(1050px,calc(100vw - 34px))!important;
+ height:auto!important;max-height:calc(100dvh - 36px)!important;
+ padding:22px 25px 20px!important;border-radius:18px;
+ display:none;overflow-y:auto!important;overflow-x:hidden!important;
+ background:#09243d;border:1px solid #91c4d9;
+ box-shadow:0 15px 80px #0009;
+}
+.drawer.open{display:flex!important;flex-direction:column!important;gap:10px!important}
+.drawer-heading{display:grid!important;grid-template-columns:minmax(0,1fr) minmax(240px,42%) 49px!important;align-items:start;gap:12px}
+.drawer-heading h2{font-size:clamp(23px,2.5vw,30px)!important;line-height:1.2;margin:3px 0!important}
+.drawer-heading .eyebrow{font-size:14px;letter-spacing:.05em}
+.drawer .muted{font-size:15px;line-height:1.4;margin:0 0 2px}
+.chart-selectors{display:grid;grid-template-columns:1fr 1fr;gap:8px;max-width:none;width:100%}
+.chart-selectors select{font-size:15px;min-height:45px;padding:8px;border-radius:9px;max-width:100%;min-width:0}
+#closeChart{min-width:48px;min-height:48px;border-radius:11px;font-size:27px;justify-self:end}
+.analysis-tabs{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:3px 0 1px}
+.analysis-tab{min-height:50px;border:2px solid #567a96;border-radius:10px;
+ background:#203e5a;color:#dfebf6;font-size:19px;font-weight:800}
+.analysis-tab.active{background:#247c99;color:#fff;border-color:#a8f0ff}
+.analysis-tab:hover{background:#2f6984}
+.analysis-view{display:flex;flex-direction:column;gap:12px;width:100%;min-width:0;min-height:0}
+.analysis-view[hidden]{display:none!important}
+#timeTabPanel .plot-wrap{min-height:0!important;padding:9px 12px;background:#102b43}
+#plot{width:100%;max-height:54dvh;min-height:200px}
+#plotTooltip{font-size:16px}
+#spatialTabPanel{align-items:center;justify-content:center}
+#spatialTabPanel .region-spatial{max-width:100%;width:100%;height:auto!important;min-height:0!important;margin:0;overflow:hidden}
+#spatialTabPanel .region-spatial-heading{font-size:18px!important;color:#e9f5fc!important}
+#regionSpatialCanvas{width:auto!important;max-width:100%!important;max-height:54dvh!important;height:auto!important;object-fit:contain}
+.drawer-buttons{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;margin-top:10px!important}
+.drawer-buttons button{font-size:15px!important;font-weight:750;line-height:1.2;min-width:0!important;min-height:47px;padding:9px 8px!important}
+#backToRegion{background:#24516b}
+/* EDITING NOTE: TIMELINE Z-INDEX — layering relative to other controls. */
+.timeline{z-index:690}
+@media(max-width:900px){
+ .brand{left:62px;top:10px;max-width:calc(100vw - 285px)}
+ .quick-layers{left:12px;top:84px;width:270px;padding:13px}
+ .quick-caption{font-size:15px}.quick-choice{font-size:15px;min-height:58px}
+ .panel.technical-panel{width:255px;top:10px;right:10px}
+ .technical-toggle{font-size:16px}
+ .drawer,.drawer.open{width:calc(100vw - 20px)!important;padding:14px!important}
+ .drawer-heading{grid-template-columns:1fr 46px!important}
+ .chart-selectors{grid-column:1 / -1;grid-row:2;max-width:100%}
+ #closeChart{grid-column:2;grid-row:1}
+ .drawer-buttons{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+}
+/* EDITING NOTE: LEGACY MOBILE OVERRIDES — some overridden by later !important rules in V27. */
+@media(max-width:640px){
+ .brand{left:51px;top:7px;max-width:calc(100vw - 105px)}
+ .brand strong{font-size:15px}.brand small{display:none}
+ .quick-layers{left:8px;top:66px;width:min(232px,calc(100vw - 75px));padding:10px}
+ .quick-choice{padding:8px 10px;min-height:53px;font-size:14px;gap:7px;margin-bottom:8px}
+ .quick-choice small{font-size:11px}.quick-instruction{font-size:11px;margin-top:4px}
+ .quick-caption{font-size:13px;margin-bottom:8px}
+ .quick-icon{font-size:17px;width:18px}
+ .panel.technical-panel{top:66px;right:8px;width:auto;max-width:calc(100vw - 250px);min-width:115px;padding:4px}
+ .technical-toggle{padding:7px;font-size:12px;min-height:38px;gap:4px}
+ .toggle-chevron{font-size:16px}
+ .technical-panel.expanded{width:min(290px,calc(100vw - 16px));max-width:calc(100vw - 16px);z-index:745}
+ .technical-content{max-height:calc(100dvh - 135px)}
+ .cursor-coordinates{left:8px;bottom:143px;font-size:11px;max-width:175px}
+ .drawer,.drawer.open{width:calc(100vw - 12px)!important;max-height:calc(100dvh - 12px)!important;padding:12px!important;border-radius:12px}
+ .drawer-heading h2{font-size:21px!important}
+ .chart-selectors{grid-template-columns:1fr;gap:5px}
+ .chart-selectors select{min-height:42px}
+ .analysis-tab{min-height:44px;font-size:16px}
+ .series-toggles label,.trend-control{font-size:14px}
+ .drawer-buttons{gap:6px}
+ .drawer-buttons button{font-size:13px!important;min-height:45px}
+ #plot{min-height:180px;max-height:44dvh}
+ #regionSpatialCanvas{max-height:44dvh!important}
+ .leaflet-control-zoom{margin-bottom:148px!important}
+}
+@media(max-width:380px){
+ .quick-layers{width:calc(100vw - 96px);left:6px}
+ .quick-caption{font-size:12px}
+ .quick-choice{font-size:12px;padding:7px}
+ .quick-instruction{font-size:10px}
+ .panel.technical-panel{left:7px;right:auto;top:307px;min-width:148px;width:148px;max-width:calc(100vw - 14px)}
+ .panel.technical-panel.expanded{top:60px;width:calc(100vw - 14px);min-width:0}
+}
+
+/* V19 — smooth responsive navigation, clear map controls and Plotly charts. */
+:root { --timeline-clearance: 156px; }
+.quick-instruction{display:none!important}
+.quick-layers{width:min(345px,calc(100vw - 36px))}
+/* EDITING NOTE: HISTORICAL DATASET FONT OVERRIDE — later V26/V27 rules are the best place for final font edits. */
+.quick-choice{font-size:16px;gap:11px;padding:13px;line-height:1.35}
+.quick-choice small{font-size:13px}
+.leaflet-image-layer.grace-month-overlay{transition:opacity .25s ease!important}
+.leaflet-bottom.leaflet-left{bottom:calc(var(--timeline-clearance) + 7px)!important}
+.leaflet-bottom.leaflet-right{bottom:calc(var(--timeline-clearance) + 7px)!important}
+.leaflet-control-zoom{margin-bottom:10px!important}
+/* EDITING NOTE: COORDINATE DISPLAY BASE/RESPONSIVE POSITION — final coordinate position is lower in V29. */
+.cursor-coordinates{
+ position:fixed!important;bottom:calc(var(--timeline-clearance) + 11px)!important;
+ left:84px!important;max-width:min(270px,calc(100vw - 95px));
+ z-index:690;font-size:14px;padding:7px 11px;pointer-events:none;
+}
+.timeline{max-width:calc(100vw - 20px);overflow:visible}
+.pager button:disabled{opacity:.35;cursor:not-allowed}
+.timeline .availability span{transition:background-color .18s ease}
+#timeTabPanel .plot-wrap{padding:5px!important;overflow:hidden;background:#102b43!important}
+#plot{
+ display:block!important;width:100%!important;height:clamp(320px,52dvh,490px)!important;
+ min-height:300px!important;max-height:none!important;aspect-ratio:auto!important;
+ touch-action:auto!important;overflow:visible!important;background:#0b263e;
+}
+#plot .modebar{top:8px!important;right:10px!important}
+#plot .modebar-btn{filter:brightness(1.15)}
+#plot .svg-container{width:100%!important}
+#plot .plotly .main-svg{border-radius:8px}
+#regionSpatialCanvas{image-rendering:crisp-edges;max-height:60dvh!important}
+#spatialTabPanel .region-spatial{padding:12px;min-width:0}
+@media(max-width:900px){
+ .quick-layers{width:min(310px,calc(100vw - 36px))}
+ #plot{height:clamp(320px,48dvh,450px)!important}
+}
+@media(max-width:640px){
+ .quick-layers{left:8px;top:65px;width:min(235px,calc(100vw - 80px))}
+ .quick-choice{font-size:13px;padding:8px;line-height:1.3}
+ .quick-choice small{font-size:11px}
+ .cursor-coordinates{left:69px!important;bottom:calc(var(--timeline-clearance) + 8px)!important;
+  font-size:11px;max-width:calc(100vw - 81px);padding:5px 8px}
+ #plot{height:370px!important;min-height:330px!important}
+ .leaflet-bottom.leaflet-left{bottom:calc(var(--timeline-clearance) + 9px)!important}
+}
+@media(max-width:420px){
+  .quick-layers{width:calc(100vw - 160px);min-width:0}
+  .quick-choice{padding:7px 6px;font-size:12px;gap:4px;overflow-wrap:anywhere}
+  .quick-choice small{font-size:11px}
+  .quick-icon{width:17px;flex:none}
+}
+/* V19 final containment: the spatial card must never cover tabs or downloads.
+   Use a bounded DISPLAY height; its backing canvas stays 2x/3x detailed. */
+.drawer.open{overflow-y:auto!important;overscroll-behavior:contain}
+.analysis-tabs{flex:none!important}
+.analysis-view{flex:none!important;min-height:0!important;overflow:visible!important}
+#spatialTabPanel .region-spatial{
+ flex:none!important;min-height:0!important;height:auto!important;max-height:none!important;
+ margin:4px auto 6px!important;overflow:visible!important;
+}
+#regionSpatialCanvas{
+ flex:none!important;display:block!important;
+ max-height:min(43dvh,390px)!important;
+ width:auto!important;height:auto!important;
+ max-width:100%!important;object-fit:contain!important;
+}
+.drawer-buttons{flex:none!important;position:relative;z-index:1}
+@media(max-width:640px){
+ #regionSpatialCanvas{max-height:min(42dvh,350px)!important}
+ #spatialTabPanel .region-spatial{margin:3px auto 4px!important}
+}
+
+/* V20 — bottom-left coordinate readout, easy map zoom, minimal public buttons. */
+/* EDITING NOTE: PUBLIC BUTTON SPACING — applied to all public map selection buttons. */
+.quick-choice{justify-content:flex-start;min-height:58px!important;padding:11px 13px!important}
+.quick-choice small{display:none!important}
+.quick-layers{padding-bottom:10px}
+/* The map provides space at lower left; on narrow screens place coords above full-width timeline. */
+.cursor-coordinates{
+ position:fixed!important;left:14px!important;bottom:14px!important;
+ max-width:280px!important;z-index:710!important;
+ padding:8px 11px!important;font-size:14px!important;
+}
+@media(max-width:970px){
+ .cursor-coordinates{left:10px!important;bottom:calc(var(--timeline-clearance) + 10px)!important;max-width:250px!important}
+}
+@media(max-width:520px){
+ .cursor-coordinates{left:8px!important;font-size:12px!important;max-width:210px!important}
+}
+/* Analysis dialog now has only the current region title and close control. */
+/* EDITING NOTE: ANALYSIS CLOSE BUTTON / HEADER LAYOUT — applies to technical analysis. */
+.drawer-heading{grid-template-columns:minmax(0,1fr) 52px!important}
+#closeChart{grid-column:2;grid-row:1;align-self:start}
+/* Advanced metrics, never visible outside expanded Technical use. */
+.technical-metrics{margin-top:9px;border-top:1px solid #7694ac66;padding-top:9px}
+.metric-toggle{display:block;width:100%;border-radius:9px;border:1px solid #8acfe2;
+ background:#215d77;color:#f5fdff;padding:10px 12px;text-align:left;
+ font-weight:750;font-size:15px;cursor:pointer}
+.metric-toggle:hover{background:#2b708c}
+.metric-content{margin-top:10px;padding:11px;background:#0d2c44;border:1px solid #517f99;border-radius:10px}
+/* EDITING NOTE: TECHNICAL METRICS — styles for the separate correlation/NSE/RMSE interface. */
+.technical-panel .metric-content label{display:block;margin:8px 0 4px;font-size:13px;color:#e0f3fc}
+.metric-content select{width:100%;min-width:0;min-height:40px;font-size:14px}
+.metric-region{font-size:12px;color:#bcd7e9;line-height:1.4;margin:10px 0 8px}
+.metric-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px}
+.metric-grid>div{border:1px solid #58869d;background:#173c56;border-radius:7px;
+ padding:8px 5px;display:flex;flex-direction:column;gap:5px;min-width:0}
+.metric-grid span{font-size:10px;line-height:1.25;color:#c4e0ee}
+.metric-grid strong{font-size:17px;color:#fff;font-variant-numeric:tabular-nums}
+.metric-note{font-size:11px;color:#d3e6f2;line-height:1.45;margin:9px 0 0}
+@media(max-width:700px){
+ .drawer-heading{grid-template-columns:minmax(0,1fr) 46px!important}
+ .metric-grid strong{font-size:16px}
+}
+
+/* Keep Leaflet zoom/scale and bottom-left coordinate readout separate on narrow screens. */
+@media(max-width:970px){.leaflet-top.leaflet-left{top:0!important}.leaflet-bottom.leaflet-right .leaflet-control-scale{margin-bottom:6px}}
+
+/* ===== V21: technical popup, movable analysis, map hover ===== */
+.map-value-tooltip{
+ position:fixed;z-index:765;pointer-events:none;
+ color:#f5fbff;background:rgba(8,34,54,.95);
+ border:1px solid #89d8ed;border-radius:9px;
+ box-shadow:0 6px 20px rgba(0,0,0,.3);
+ padding:9px 12px;max-width:275px;white-space:nowrap;
+ font:700 14px/1.3 'Segoe UI',Arial,sans-serif;
+}
+.map-value-tooltip[hidden]{display:none!important}
+.metrics-modal[hidden],.metric-backdrop[hidden]{display:none!important}
+.metric-backdrop{position:fixed;inset:0;z-index:880;background:rgba(2,17,31,.6)}
+.metrics-modal{
+ position:fixed;z-index:890;left:50%;top:50%;transform:translate(-50%,-50%);
+ width:min(620px,calc(100vw - 30px));max-height:calc(100dvh - 30px);
+ overflow-y:auto;background:#102b43;color:#ecf7ff;
+ border:1px solid #91c4d9;border-radius:18px;
+ box-shadow:0 20px 65px rgba(0,0,0,.65);padding:24px;
+}
+.metrics-modal-header{display:flex;justify-content:space-between;gap:16px;align-items:flex-start}
+.metrics-modal h2{font-size:25px;margin:5px 0 14px}
+#closeMetrics{border:1px solid #6990a8;color:white;background:#25445f;
+ border-radius:9px;min-width:45px;height:45px;font-size:26px}
+.metrics-modal .metric-content{display:block;padding:14px;margin:0}
+.metric-selectors{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.metric-selectors label{font-size:14px;font-weight:700;color:#e4f2f8}
+.metric-selectors select{display:block;margin-top:8px;width:100%;background:#26465e;
+ color:white;border-radius:8px;padding:9px;min-height:45px;border:1px solid #719fb2}
+.metrics-modal .metric-grid{gap:12px}
+.metrics-modal .metric-grid>div{padding:16px 12px}
+.metrics-modal .metric-grid span{font-size:13px}
+.metrics-modal .metric-grid strong{font-size:25px}
+.metrics-modal .metric-note{font-size:13px}
+.spatial-region-picker{display:flex;align-items:center;gap:14px;width:min(100%,720px);
+ margin:2px auto 4px;font-weight:700}
+.spatial-region-picker label{flex:0 0 auto;font-size:15px}
+.spatial-region-picker select{flex:1;min-width:0;max-width:500px;
+ background:#24445f;color:white;border:1px solid #739bb2;
+ border-radius:9px;min-height:43px;padding:8px 12px;font-size:15px}
+/* EDITING NOTE: DRAGGABLE TECHNICAL ANALYSIS — grab cursor and drag positioning on desktop. */
+.drawer-heading{cursor:grab;touch-action:none;user-select:none}
+.drawer-heading:active{cursor:grabbing}
+.drawer.dragged-analysis,.drawer.dragged-analysis.open{
+ left:var(--dialog-x)!important;top:var(--dialog-y)!important;
+ right:auto!important;bottom:auto!important;
+ transform:none!important;
+}
+@media(max-width:720px){
+ .drawer-heading{cursor:default;touch-action:auto}
+ .spatial-region-picker{flex-direction:column;align-items:stretch;gap:5px}
+ .spatial-region-picker select{width:100%;max-width:none}
+ .metric-selectors{grid-template-columns:1fr;gap:12px}
+ .metrics-modal{padding:16px}
+ .metrics-modal .metric-grid strong{font-size:20px}
+ .map-value-tooltip{font-size:12px;padding:6px 8px}
+}
+/* Analysis button stays inside the collapsed Technical use section. */
+.technical-content .chart-button {display:block;width:100%;margin-top:13px;min-height:48px}
+/* Both analysis tabs have clear region and dataset selectors. */
+.analysis-pickers {display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);
+ gap:12px;width:100%;margin:2px 0 7px}
+.analysis-pickers label {display:flex;flex-direction:column;gap:6px;font-weight:700;
+ color:#e9f7ff;font-size:15px;min-width:0}
+.analysis-pickers select {width:100%;min-width:0;min-height:44px;border:1px solid #7193a9;
+ border-radius:10px;padding:8px 12px;background:#24445f;color:#fff;font-size:15px}
+.region-popup-content .region-popup-context {margin:5px 0 3px;font-size:14px;color:#526b80}
+.region-popup-content .region-popup-average {margin:4px 0 13px;font-size:17px;
+ font-weight:700;color:#133c57}
+/* EDITING NOTE: TECHNICAL DROPDOWNS AT SMALL WIDTHS — they stack rather than overlap. */
+@media(max-width:680px){.analysis-pickers{grid-template-columns:1fr;gap:9px}
+ .analysis-pickers label{font-size:14px}.analysis-pickers select{min-height:40px}}
+
+/* V23: A boundary click opens a focused public analysis without editing tools.
+   A Technical use opening retains all selectors and the three export buttons. */
+/* EDITING NOTE: BOUNDARY-OPENED ANALYSIS — hides advanced pickers/downloads only in public boundary flow. */
+.drawer.boundary-analysis .analysis-pickers,
+.drawer.boundary-analysis .drawer-buttons {display:none!important;}
+.drawer.boundary-analysis .analysis-view{gap:8px;}
+/* Three technical actions after removing obsolete point-selection control. */
+.drawer:not(.boundary-analysis) .drawer-buttons{grid-template-columns:repeat(3,minmax(0,1fr))!important;}
+@media(max-width:580px){.drawer:not(.boundary-analysis) .drawer-buttons{grid-template-columns:1fr!important;}}
+
+
+/* Welcome guide — frontend only. Large readable text and keyboard-accessible controls. */
+.welcome-guide-trigger{
+ flex:none;min-height:39px;min-width:68px;margin-left:3px;padding:6px 9px;
+ border:1px solid #85dbec;border-radius:9px;background:#1d526b;
+ color:#f6fcff;font-size:15px;font-weight:750;cursor:pointer;white-space:nowrap;
+}
+.welcome-guide-trigger:hover{background:#276e89}
+/* EDITING NOTE: WELCOME POPUP — heading, content panel, introductory instructions and close controls. */
+.welcome-dialog{
+ box-sizing:border-box;position:fixed;left:50%;top:50%;
+ transform:translate(-50%,-50%);
+ width:min(790px,calc(100vw - 26px));max-width:790px;
+ max-height:calc(100dvh - 26px);margin:0;padding:0;
+ border:1px solid #8abdd0;border-radius:18px;
+ background:#fff;color:#18364c;overflow:auto;overscroll-behavior:contain;
+ box-shadow:0 25px 90px rgba(0,12,30,.55);z-index:2000;
+}
+.welcome-dialog::backdrop{background:rgba(4,23,42,.74)}
+.welcome-header{
+ display:flex;justify-content:space-between;align-items:flex-start;gap:15px;
+ padding:24px 26px 22px;background:#123d59;color:#fff;
+}
+.welcome-kicker{display:block;font-size:12px;font-weight:800;letter-spacing:.13em;color:#a7eaf7}
+.welcome-header h2{font-size:clamp(25px,3vw,34px);line-height:1.2;margin:7px 0 7px;color:#fff}
+.welcome-header p{font-size:17px;line-height:1.45;margin:0;color:#d8f0f7;max-width:600px}
+.welcome-close{
+ flex:none;width:43px;height:43px;min-height:43px;padding:0;border-radius:9px;
+ border:1px solid rgba(255,255,255,.65);background:rgba(255,255,255,.1);
+ color:#fff;font-size:28px;line-height:1;cursor:pointer;
+}
+.welcome-close:hover{background:rgba(255,255,255,.22)}
+.welcome-body{padding:19px 27px 16px}
+.welcome-intro{margin:0 0 12px!important;color:#38566c;font-size:18px!important;font-weight:650}
+.welcome-steps{list-style:none;display:grid;gap:15px;margin:0;padding:0}
+.welcome-steps li{display:flex;gap:14px;align-items:flex-start}
+.welcome-step-number{
+ flex:none;display:grid;place-items:center;width:34px;height:34px;
+ background:#dcf4f8;color:#165d74;border-radius:50%;font-size:18px;font-weight:800;
+}
+.welcome-steps strong{display:block;margin:0 0 3px;font-size:18px;line-height:1.35;color:#163d57}
+.welcome-steps p{margin:0!important;font-size:16px!important;line-height:1.5!important;color:#496176}
+.welcome-explainer{margin-top:20px;border:1px solid #d6e5ee;border-radius:12px;background:#f2f8fb;padding:14px 16px}
+.welcome-explainer strong{font-size:17px;color:#204963}
+.welcome-explainer p{font-size:15px!important;color:#476076;line-height:1.5!important;margin:5px 0 0!important}
+.welcome-color-low{font-weight:750;color:#bd4b38}.welcome-color-high{font-weight:750;color:#2b67ab}
+.welcome-caution{font-size:13px!important;line-height:1.45!important;color:#596f80;margin:12px 0 0!important}
+.welcome-footer{
+ display:flex;align-items:center;justify-content:space-between;gap:18px;flex-wrap:wrap;
+ padding:17px 26px 21px;border-top:1px solid #dbe8ee;background:#f8fbfc;
+}
+.welcome-remember{display:flex;align-items:center;gap:10px;font-size:14px;color:#314f64;line-height:1.4;cursor:pointer}
+.welcome-remember input{width:19px;height:19px;accent-color:#176c89;flex:none}
+.welcome-start{
+ min-width:175px;min-height:48px;padding:10px 19px;border:0;border-radius:10px;
+ background:#167c98;color:white;font-size:17px;font-weight:800;cursor:pointer;
+}
+.welcome-start:hover{background:#0d6079}
+.welcome-guide-trigger:focus-visible,.welcome-dialog button:focus-visible,.welcome-remember input:focus-visible{outline:3px solid #e8aa41!important;outline-offset:3px}
+@media(max-width:640px){
+ .welcome-guide-trigger{min-width:35px;height:35px;min-height:35px;padding:4px 6px;font-size:18px}
+ .welcome-guide-trigger .welcome-guide-label{display:none}
+ .welcome-header{padding:20px 17px 17px}
+ .welcome-header h2{font-size:25px}
+ .welcome-header p{font-size:15px}
+ .welcome-body{padding:16px 18px}
+ .welcome-steps{gap:13px}
+ .welcome-steps strong{font-size:16px}
+ .welcome-steps p{font-size:15px!important}
+ .welcome-footer{padding:15px 18px;gap:14px}
+ .welcome-start{width:100%}
+ .welcome-remember{font-size:13px}
+}
+@media(prefers-reduced-motion:reduce){.welcome-dialog,.welcome-guide-trigger{transition:none!important}}
+
+/* ============================================================
+   V26 — public-first GRACE Explorer; Technical use unchanged
+   ============================================================ */
+/* EDITING NOTE: MAIN LOGO HEADER — Gravimetry project logo style and Guide button (desktop). */
+.gravimetry-brand{display:flex;align-items:center;gap:7px;padding:5px;
+ background:rgba(255,255,255,.98);border:1px solid #a9bdc8;
+ border-radius:12px;max-width:min(440px,calc(100vw - 92px));}
+.gravimetry-logo{display:block;width:min(260px,42vw);height:auto;max-height:106px;
+ object-fit:contain;border-radius:5px;}
+.gravimetry-brand .welcome-guide-trigger{color:#effaff;background:#16445f;
+ border-color:#7cbbc9;white-space:nowrap;padding:8px 10px;min-width:73px;}
+/* EDITING NOTE: DATASET BUTTON CONTAINER — public box top/left position and overall width on desktop. */
+.quick-layers{top:138px;left:20px;width:min(360px,calc(100vw - 48px));
+ padding:17px 18px 16px;}
+/* EDITING NOTE: EDIT DESKTOP DATASET FONT HERE — .quick-choice font-size:17px; tablet/mobile overrides below. */
+.quick-choice{font-size:14.5px;min-height:64px;line-height:1.2;}
+/* EDITING NOTE: PUBLIC OPACITY LABEL + PERCENT — font-size, spacing, and alignment next to the slider. */
+.public-opacity-row{display:flex;justify-content:space-between;gap:12px;
+ align-items:center;margin:17px 0 6px;color:#e3f5ff;
+ font-size:16px;font-weight:700;}
+.public-opacity-row output{font-variant-numeric:tabular-nums;font-size:18px;}
+/* EDITING NOTE: PUBLIC OPACITY SLIDER — #publicOpacity thumb color/height/width. */
+#publicOpacity{width:100%;accent-color:#69d1e7;cursor:pointer;margin:0 0 4px;
+ min-height:25px;}
+.public-analysis-backdrop{position:fixed;inset:0;z-index:860;
+ background:rgba(1,16,29,.72);}
+/* EDITING NOTE: PUBLIC TIME-SERIES POPUP — window width, height, padding, location and background. */
+.public-time-dialog{position:fixed;z-index:865;top:50%;left:50%;transform:translate(-50%,-50%);
+ width:min(1120px,calc(100vw - 28px));max-height:calc(100dvh - 22px);
+ padding:21px 26px;overflow:auto;display:flex;flex-direction:column;gap:13px;
+ background:#0d2942;border:1px solid #89c4d8;box-shadow:0 16px 65px #0009;
+ border-radius:18px;color:#f5faff;box-sizing:border-box;}
+.public-time-dialog[hidden],.public-analysis-backdrop[hidden]{display:none!important;}
+/* EDITING NOTE: PUBLIC TIME-SERIES HEADING — title and subtitle font sizes. */
+.public-time-header{display:flex;align-items:start;justify-content:space-between;gap:16px;}
+.public-time-header h2{font-size:clamp(22px,2.5vw,30px);line-height:1.2;margin:5px 0;}
+.public-time-header p{font-size:15px;color:#d2e5f3;margin:0;}
+#publicClose{min-height:48px;min-width:48px;border-radius:9px;background:#294c65;
+ color:white;border:1px solid #719cb2;font-size:26px;cursor:pointer;}
+/* EDITING NOTE: PUBLIC DATASET LEGEND AREA — row of selectable labels above the chart. */
+.public-series-legend{display:flex;flex-wrap:wrap;align-items:center;gap:9px;}
+/* EDITING NOTE: LEGEND BUTTONS ABOVE CHART — font-size, spacing and colors for dataset names. */
+.public-legend-button{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:700;
+ color:#eaf5ff;background:#203e57;border:1px solid #668ba1;border-radius:9px;
+ padding:9px 11px;cursor:pointer;min-height:38px;}
+.public-legend-button[aria-pressed="false"]{opacity:.42;text-decoration:line-through;}
+.public-legend-button[aria-pressed="true"]{box-shadow:inset 0 0 0 1px #a8cde3;}
+.public-legend-swatch{display:inline-block;width:23px;height:5px;border-radius:4px;}
+/* EDITING NOTE: LINEAR TREND CHECKBOX — toggle label and checkbox appearance. */
+.public-trend-control{display:flex;align-items:center;gap:9px;font-size:16px;font-weight:700;}
+.public-trend-control input{accent-color:#8ce7ff;width:19px;height:19px;}
+.public-plot-area{border:1px solid #345873;border-radius:12px;background:#102a43;
+ overflow:hidden;min-height:0;}
+/* EDITING NOTE: PUBLIC TIME-SERIES CHART — SVG display dimensions and max-height; data/lines come from app.js. */
+#publicPlot{display:block;width:100%;height:auto;max-height:min(56dvh,520px);}
+.public-plot-note{font-size:13px;color:#b8d6e9;margin:0;line-height:1.4;}
+/* EDITING NOTE: TABLET LAYOUT (<=880px) — desktop dataset text becomes 15px at this breakpoint. */
+@media(max-width:880px){
+ .gravimetry-logo{width:min(190px,38vw);}
+ .quick-layers{top:106px;width:min(285px,calc(100vw - 40px));}
+/* EDITING NOTE: EDIT TABLET DATASET FONT HERE — .quick-choice font-size:15px under 880px. */
+ .quick-choice{font-size:15px;min-height:60px;}
+ .public-time-dialog{padding:16px;}
+}
+/* EDITING NOTE: LEGACY MOBILE LAYOUT (<=640px) — the V27 !important block later has priority. */
+@media(max-width:640px){
+ .gravimetry-brand{left:51px;top:5px;gap:4px;padding:3px;}
+ .gravimetry-logo{width:min(154px,39vw);max-height:65px;}
+ .gravimetry-brand .welcome-guide-trigger{font-size:12px;min-width:56px;padding:6px;}
+ .quick-layers{left:8px;top:83px;width:min(252px,calc(100vw - 76px));padding:11px;}
+ .quick-choice{font-size:13px;min-height:54px;}
+ .public-opacity-row{font-size:12px;margin-top:9px;}
+ .public-opacity-row output{font-size:13px;}
+ .public-time-dialog{width:calc(100vw - 12px);max-height:calc(100dvh - 12px);
+   padding:12px;gap:9px;}
+ .public-time-header h2{font-size:21px;}
+ .public-time-header p{font-size:12px;}
+ .public-legend-button{font-size:11px;padding:6px 8px;min-height:32px;}
+ .public-legend-swatch{width:16px;}
+ .public-trend-control{font-size:13px;}
+ #publicPlot{max-height:47dvh;min-height:170px;}
+}
+
+
+/* EDITING NOTE: V27 MOBILE/PANEL AND SELECTION IMPROVEMENTS — no need to change them for desktop fonts. */
+/* V27 — re-selectable boundaries and usable compact/mobile layouts. */
+.public-time-dialog[hidden],.public-analysis-backdrop[hidden]{display:none!important;pointer-events:none!important}
+.public-time-dialog{overscroll-behavior:contain}
+#publicPlot{width:100%;height:auto}
+/* EDITING NOTE: CURRENT MAIN PHONE LAYOUT (<=640px) — high-priority overrides for mobile screens. */
+@media(max-width:640px){
+  /* Stack the header, Technical use, and two public buttons without overlaps. */
+  .gravimetry-brand{top:6px!important;left:51px!important;max-width:calc(100vw - 59px)!important}
+  .gravimetry-logo{max-width:min(164px,45vw)!important;max-height:60px!important}
+  .technical-panel.panel{position:fixed!important;top:77px!important;right:8px!important;left:auto!important;
+    width:min(205px,calc(100vw - 16px))!important;max-height:calc(100dvh - 280px)!important;
+    padding:8px!important;z-index:790!important}
+  .technical-panel .technical-toggle{min-height:42px!important;font-size:15px!important}
+  .technical-panel.expanded{width:min(340px,calc(100vw - 16px))!important;
+    max-height:calc(100dvh - 155px)!important;overflow:auto!important}
+  body.technical-expanded .quick-layers{visibility:hidden!important;pointer-events:none!important}
+/* EDITING NOTE: MOBILE QUICK-PICK PANEL POSITION — top, left, width and max-height; scroll if needed. */
+  .quick-layers{top:143px!important;left:8px!important;width:min(265px,calc(100vw - 16px))!important;
+    max-height:min(38dvh,255px)!important;overflow-y:auto!important;padding:10px!important}
+/* EDITING NOTE: MOBILE 'EXPLORE WATER STORAGE' TITLE — font-size:14px !important. */
+  .quick-caption{font-size:14px!important;margin-bottom:8px!important}
+/* EDITING NOTE: EDIT MOBILE DATASET FONT HERE — font-size:14px !important for <=640px. */
+  .quick-choice{font-size:14px!important;line-height:1.2!important;min-height:51px!important;padding:9px!important}
+/* EDITING NOTE: MOBILE PUBLIC OPACITY FONT — font-size:13px !important for <=640px. */
+  .public-opacity-row{font-size:13px!important;margin-top:10px!important}
+/* EDITING NOTE: MOBILE TIMELINE — bottom position, width and maximum height. */
+  .timeline{left:7px!important;right:7px!important;bottom:7px!important;width:auto!important;
+    max-height:42dvh!important;overflow:hidden!important;padding:10px!important}
+  .cursor-coordinates{bottom:calc(var(--timeline-clearance) + 8px)!important;left:8px!important;
+    font-size:12px!important;max-width:210px!important}
+/* EDITING NOTE: MOBILE TIME-SERIES POPUP — responsive width, padding, overflow and corners. */
+  .public-time-dialog{width:calc(100vw - 12px)!important;max-height:calc(100dvh - 12px)!important;
+    padding:12px!important;gap:10px!important;overflow-y:auto!important;border-radius:12px!important}
+  .public-time-header{gap:8px!important}
+  .public-time-header h2{font-size:20px!important;line-height:1.2!important;overflow-wrap:anywhere}
+  .public-time-header p{font-size:12px!important;line-height:1.4!important}
+  #publicClose{min-height:44px!important;min-width:44px!important;font-size:25px!important}
+/* EDITING NOTE: MOBILE DATASET LEGEND BUTTONS — two columns, touch-friendly spacing. */
+  .public-series-legend{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:6px!important}
+  .public-legend-button{min-width:0!important;min-height:42px!important;text-align:left!important;
+    font-size:12px!important;line-height:1.3!important;padding:6px 7px!important;overflow-wrap:anywhere}
+  .public-plot-area{overflow-x:hidden!important;max-width:100%!important}
+  #publicPlot{min-height:0!important;max-height:none!important;height:auto!important;aspect-ratio:560/445!important}
+  .public-trend-control{font-size:13px!important;min-height:35px!important}
+  .public-plot-note{font-size:12px!important}
+}
+/* EDITING NOTE: SMALLEST PHONE LAYOUT (<=390px) — extra constraints on narrow devices. */
+@media(max-width:390px){
+  .technical-panel.panel{top:75px!important;width:min(172px,calc(100vw - 16px))!important}
+  .quick-layers{top:155px!important;width:min(220px,calc(100vw - 16px))!important}
+/* EDITING NOTE: EDIT NARROW PHONE DATASET FONT HERE — font-size:12px !important for <=390px. */
+  .quick-choice{font-size:12px!important;min-height:47px!important}
+  .public-legend-button{font-size:11px!important}
+}
+@media(max-height:610px) and (max-width:640px){
+  .quick-layers{top:130px!important;max-height:30dvh!important}
+  .timeline{max-height:37dvh!important}
+  .public-time-dialog{max-height:calc(100dvh - 8px)!important}
+}
+
+/* EDITING NOTE: BOUNDARY TOOLTIP HOVER EFFECT — fade animation for the region name (not polygon geometry). */
+/* V28: subtle NASA-style tooltip entrance on hover, no extra map rectangle. */
+.grace-region-tip.leaflet-tooltip {
+ transform-origin: 50% 100%;
+ animation: grace-tip-appear 180ms cubic-bezier(.18,.75,.25,1) both;
+ pointer-events: none;
+}
+@keyframes grace-tip-appear {
+ from {opacity:0;filter:brightness(.85);}
+ to {opacity:1;filter:brightness(1);}
+}
+@media (prefers-reduced-motion: reduce) {
+ .grace-region-tip.leaflet-tooltip {animation:none!important;}
+}
+
+
+/* EDITING NOTE: V29 PUBLIC EXTENSIONS — 1 km layer, colored trends, partner logos; later V30 overrides apply. */
+/* V29 — 1-km Thailand layer, color-coded trend values and partner institutions */
+.quick-choice:disabled{opacity:.56;cursor:not-allowed;border-style:dashed}
+/* EDITING NOTE: OLDER TREND LEGEND LAYOUT — its scrolling is overridden by the later V30 .public-trend-values block. */
+.public-trend-values{display:flex;flex-wrap:wrap;gap:7px;align-items:center;max-height:100px;overflow:auto}
+.public-trend-values[hidden]{display:none!important}
+/* EDITING NOTE: COLORED TREND VALUE CHIPS — font-size, borders and padding under the chart. */
+.trend-value-chip{display:inline-flex;align-items:center;gap:7px;border:1px solid;border-radius:9px;
+ padding:5px 8px;font-weight:650;font-size:12px;background:rgba(20,45,66,.94);color:#eaf6ff}
+.trend-value-dot{width:9px;height:9px;border-radius:50%;flex:none}
+/* EDITING NOTE: PARTNER INSTITUTION LOGOS — location, size and background of the strip at bottom-left. */
+.partner-logos{position:fixed;z-index:705;left:12px;bottom:7px;
+ max-width:min(470px,calc(100vw - 24px));padding:5px 8px;
+ background:rgba(7,25,42,.92);border:1px solid rgba(120,197,221,.45);
+ border-radius:10px;pointer-events:none;box-shadow:0 4px 18px #0006}
+.partner-logos img{display:block;width:100%;height:auto;max-height:67px;object-fit:contain}
+/* Coordinate readout remains above partners, never underneath the strip. */
+/* EDITING NOTE: COORDINATES ABOVE PARTNER LOGOS — default bottom spacing for desktop. */
+.cursor-coordinates{bottom:90px!important}
+/* EDITING NOTE: PARTNER LOGOS ON TABLETS — keep strip and coordinates above the timeline. */
+@media(max-width:970px){
+ .partner-logos{bottom:calc(var(--timeline-clearance,120px) + 6px);max-width:min(345px,calc(100vw - 20px))}
+ .partner-logos img{max-height:48px}
+ .cursor-coordinates{bottom:calc(var(--timeline-clearance,120px) + 72px)!important}
+}
+/* EDITING NOTE: PARTNER LOGOS ON PHONES — narrower strip, smaller logo height and coordinate offset. */
+@media(max-width:640px){
+ .partner-logos{left:8px;bottom:calc(var(--timeline-clearance,170px) + 5px);
+ max-width:min(265px,calc(100vw - 16px));padding:2px 6px}
+ .partner-logos img{max-height:33px}
+ .cursor-coordinates{left:8px!important;bottom:calc(var(--timeline-clearance,170px) + 51px)!important}
+ .trend-value-chip{font-size:10px;padding:4px 6px}
+ .quick-layers{max-height:48dvh;overflow:auto}
+}
+
+
+/* EDITING NOTE: V30 TREND VALUES — FINAL OVERRIDE: legend stays below plot, wraps, and has no inner scrollbar. */
+/* V30 — place trend values below the time-series chart and show every value.
+   No nested scrollbar; on short phones only the main dialog scrolls. */
+/* EDITING NOTE: FINAL TREND LEGEND CONTAINER — edit gap/padding here for desktop without changing data. */
+.public-trend-values {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  max-height: none !important;
+  overflow: visible !important;
+  flex: none;
+  border-top: 1px solid rgba(128, 194, 217, .25);
+  padding: 12px 0 2px;
+  margin-top: 0;
+}
+.public-trend-values[hidden] { display: none !important; }
+.trend-value-chip { min-height: 28px; white-space: normal; line-height: 1.3; }
+/* EDITING NOTE: LARGER SCREEN CHART MAX HEIGHT — used to leave room for trend values below the chart. */
+@media (min-width: 700px) {
+  #publicPlot { max-height: min(48dvh, 465px); }
+}
+/* EDITING NOTE: FINAL SMALL-SCREEN TREND LEGEND — compact gap and trend font size below 640px. */
+@media (max-width: 640px) {
+  .public-trend-values { gap: 5px; padding-top: 9px; }
+  .trend-value-chip { font-size: 11px; }
+}
+
+
+/* =====================================================================
+   WELCOME GUIDE — Manual opening; mobile-only dropdown (NO auto-popup).
+   DESKTOP (>640px): original full guide dialog, opened only by clicking Guide.
+   MOBILE (<=640px): compact non-modal dropdown directly below the header.
+   Only welcome-guide styling is changed here; map/GRACE styles are untouched.
+   ===================================================================== */
+.welcome-manual-note{font-size:14px;line-height:1.4;color:#486477;}
+.welcome-manual-note b{font-weight:750;}
+/* Focus the dialog heading on open rather than showing the initial X outline.
+   Keyboard users still get normal visible focus on buttons when navigating. */
+#welcomeTitle:focus{outline:none;}
+@media (max-width:640px){
+  .welcome-dialog.mobile-guide,
+  .welcome-dialog.mobile-guide[open]{
+    position:fixed!important;
+    left:8px!important;
+    right:8px!important;
+    top:68px!important;
+    bottom:auto!important;
+    transform:none!important;
+    margin:0!important;
+    width:calc(100vw - 16px)!important;
+    max-width:380px!important;
+    max-height:min(70dvh,560px)!important;
+    overflow-x:hidden!important;
+    overflow-y:auto!important;
+    border-radius:13px!important;
+    z-index:2100!important;
+    box-shadow:0 10px 32px rgba(0,15,30,.38)!important;
+  }
+  .welcome-dialog.mobile-guide .welcome-header{padding:13px 15px 12px;}
+  .welcome-dialog.mobile-guide .welcome-header h2{font-size:21px;}
+  .welcome-dialog.mobile-guide .welcome-header p{font-size:13px;line-height:1.35;}
+  .welcome-dialog.mobile-guide .welcome-close{width:38px;height:38px;min-height:38px;font-size:23px;}
+  .welcome-dialog.mobile-guide .welcome-body{padding:12px 15px;}
+  .welcome-dialog.mobile-guide .welcome-steps{gap:11px;}
+  .welcome-dialog.mobile-guide .welcome-steps strong{font-size:15px;}
+  .welcome-dialog.mobile-guide .welcome-steps p{font-size:13px!important;line-height:1.4!important;}
+  .welcome-dialog.mobile-guide .welcome-step-number{width:28px;height:28px;font-size:14px;}
+  .welcome-dialog.mobile-guide .welcome-explainer{padding:10px 12px;margin-top:13px;}
+  .welcome-dialog.mobile-guide .welcome-explainer strong{font-size:14px;}
+  .welcome-dialog.mobile-guide .welcome-explainer p{font-size:13px!important;}
+  .welcome-dialog.mobile-guide .welcome-footer{padding:11px 14px;gap:9px;}
+  .welcome-dialog.mobile-guide .welcome-manual-note{font-size:12px;}
+  .welcome-dialog.mobile-guide .welcome-start{min-height:40px;font-size:14px;}
+}
+@media (max-width:390px){
+  .welcome-dialog.mobile-guide,
+  .welcome-dialog.mobile-guide[open]{top:63px!important;max-height:68dvh!important;}
+}

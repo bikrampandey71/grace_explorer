@@ -1,0 +1,1 @@
+Place an actual transparent PNG named grace_explorer_logo.png in this folder, then rebuild the website. Until then the site displays a CSS GRACE Explorer wordmark. The requested AI-generated PNG could not be created because the image service failed.

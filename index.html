@@ -1,0 +1,249 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>GRACE Explorer</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <link rel="stylesheet" href="style.css">
+  <!-- These are ordinary scripts to allow opening index.html via file:// -->
+  <script src="data/manifest.js"></script>
+  <script src="data/series.js"></script>
+  <script src="data/boundaries.js"></script>
+  <script src="data/footprint.js"></script>
+  <script>window.GRACE_CHUNKS={};window.GRACE_FIELDS={};</script>
+  <script src="vendor/pako.min.js"></script>
+  <script src="vendor/plotly.min.js"></script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <div id="map" role="application" aria-label="Interactive GRACE data map"></div>
+  <p id="error" class="fatal" hidden>Leaflet library unavailable. Check your connection or place Leaflet files in web/vendor and rebuild.</p>
+
+  <div class="brand gravimetry-brand" aria-label="Gravimetry for Hydro-Resource Assessment Southeast Asia">
+    <img class="gravimetry-logo" src="assets/gravimetry_southeast_asia.png"
+         alt="Gravimetry for Hydro-Resource Assessment — Southeast Asia">
+    <button id="openWelcome" type="button" class="welcome-guide-trigger" aria-haspopup="dialog"
+            aria-controls="welcomeDialog" aria-expanded="false" title="How to use this dashboard">? Guide</button>
+  </div>
+
+  <nav class="quick-layers" aria-label="Quick water storage map selection">
+    <div class="quick-caption">Explore water storage</div>
+    <button id="quickOriginal" type="button" aria-pressed="false" class="quick-choice">
+      <span class="quick-icon" aria-hidden="true">◉</span><span>Interpolated GRACE (5 km, SEA)</span>
+    </button>
+    <button id="quickDownscaled" type="button" aria-pressed="true" class="quick-choice active">
+      <span class="quick-icon" aria-hidden="true">◉</span><span>Downscaled GRACE (5 km, SEA)</span>
+    </button>
+    <button id="quickDownscaled1km" type="button" aria-pressed="false" class="quick-choice">
+      <span class="quick-icon" aria-hidden="true">◉</span><span>Downscaled GRACE (1 km, Thailand)</span>
+    </button>
+    <div class="public-opacity-row">
+      <label for="publicOpacity">GRACE overlay opacity</label>
+      <output id="publicOpacityLabel" for="publicOpacity">85%</output>
+    </div>
+    <input type="range" id="publicOpacity" min="0" max="100" value="85" step="5"
+           aria-label="GRACE overlay opacity">
+  </nav>
+
+  <aside class="panel technical-panel" id="panel" aria-label="Technical settings">
+    <button id="technicalToggle" type="button" class="technical-toggle" aria-expanded="false" aria-controls="technicalContent">
+      <span>⚙ &nbsp; Technical use</span><span class="toggle-chevron" aria-hidden="true">⌄</span>
+    </button>
+    <div id="technicalContent" class="technical-content" hidden>
+    <div class="panel-scroll">
+    <h1>Advanced settings</h1>
+    <label for="layerSelect">GRACE Dataset</label>
+    <select id="layerSelect"></select>
+    <p id="layerInfo" class="muted"></p>
+
+    <label for="regionSelect">Select country or river basin</label>
+    <select id="regionSelect"></select>
+
+    <label for="basemapSelect">Map background</label>
+    <select id="basemapSelect">
+      <option value="satellite">Satellite</option>
+      <option value="topographic">Topographic</option>
+    </select>
+
+    <div class="flex between"><label for="opacity">GRACE overlay opacity</label><span id="opacityLabel">85%</span></div>
+    <input type="range" id="opacity" min="0" max="100" step="5" value="85">
+
+    <div class="line"></div>
+    <div class="flex between legend-label"><b>Water storage anomaly</b><b>cm</b></div>
+    <div id="gradient" class="gradient"></div>
+    <div class="flex between legend-ticks"><span id="legendMin">−50</span><span>0</span><span id="legendMax">+50</span></div>
+    <div class="flex between legend-note"><span>Below average</span><span>Above average</span></div>
+    <div class="color-editor">
+      <label for="colorMin">Negative limit (cm)<input type="number" id="colorMin" value="-50" max="-1" min="-500" step="5"></label>
+      <label for="colorMax">Positive limit (cm)<input type="number" id="colorMax" value="50" min="1" max="500" step="5"></label>
+    </div>
+    <div class="color-actions"><button type="button" id="applyColors">Apply colors</button><button type="button" id="resetColors">Reset ±50</button></div>
+    <button class="text-button" id="aboutButton">ⓘ &nbsp; About these GRACE layers</button>
+    <div class="technical-metrics">
+      <button type="button" id="metricsToggle" class="metric-toggle"
+        aria-expanded="false" aria-controls="metricsModal">▤ &nbsp; Compute metrics</button>
+    </div>
+    </div>
+    <button class="chart-button" id="showChart">▥ &nbsp; Time series and Spatial map</button>
+    </div>
+    </div>
+  </aside>
+  <div id="cursorCoords" class="cursor-coordinates" aria-label="Map coordinates" aria-live="off">Lat: — &nbsp; Lon: —</div>
+  <div class="partner-logos" aria-label="Project partner logos">
+    <img src="assets/partner_logos_strip.png" alt="Partner institutions and project collaborators">
+  </div>
+  <div id="noData" class="no-data" hidden>No GRACE observation for this month and dataset. No gap filling has been applied.</div>
+  <div id="toast" class="toast" aria-live="polite"></div>
+
+  <section class="timeline" aria-label="Monthly GRACE navigator">
+    <div class="timeline-first">
+      <strong id="dateLabel">April 2002</strong>
+      <div class="selectors">
+        <label for="yearSelect">Year</label><select id="yearSelect"></select>
+        <label for="monthSelect">Month</label><select id="monthSelect"></select>
+      </div>
+      <div class="pager"><button id="prev" title="Previous month">‹</button><button id="play" title="Play or pause">▶</button><button id="next" title="Next month">›</button></div>
+    </div>
+    <input type="range" id="monthSlider" min="0" step="1" aria-label="Month">
+    <div id="availability" class="availability" aria-label="Available observations by month"></div>
+    <div class="flex between subtle"><span id="timelineStartLabel">Apr 2002</span><span>● observed &nbsp; ○ gap</span><span id="timelineEndLabel">Latest</span></div>
+  </section>
+
+
+  <!-- Public area time-series: a simple SVG view, independent of Technical use. -->
+  <div id="publicBackdrop" class="public-analysis-backdrop" hidden></div>
+  <section id="publicTimeDialog" class="public-time-dialog" role="dialog" aria-modal="true"
+           aria-labelledby="publicTimeTitle" aria-hidden="true" tabindex="-1" hidden>
+    <header class="public-time-header">
+      <div><span class="eyebrow">WATER STORAGE OVER TIME</span>
+        <h2 id="publicTimeTitle">Regional water storage</h2>
+        <p id="publicTimeSubtitle">Monthly terrestrial water storage anomalies (cm)</p>
+      </div>
+      <button id="publicClose" type="button" aria-label="Close time series">×</button>
+    </header>
+    <div id="publicLegend" class="public-series-legend" role="group" aria-label="Show or hide datasets"></div>
+    <label class="public-trend-control" for="publicTrend">
+      <input id="publicTrend" type="checkbox" checked> Show linear trend (dashed)
+    </label>
+    <div class="public-plot-area"><svg id="publicPlot" viewBox="0 0 1120 455"
+          role="img" aria-label="GRACE monthly water storage anomaly time series"></svg></div>
+    <p class="public-plot-note"></p>
+    <div id="publicTrendValues" class="public-trend-values" aria-label="Colored trend values (centimeters per year)" hidden></div>
+  </section>
+
+  <div id="metricsBackdrop" class="metric-backdrop" hidden></div>
+  <section id="metricsModal" class="metrics-modal" role="dialog" aria-modal="true"
+    aria-labelledby="metricsTitle" hidden>
+    <header class="metrics-modal-header">
+      <div><span class="eyebrow">TECHNICAL ANALYSIS</span><h2 id="metricsTitle">Compute metrics</h2></div>
+      <button type="button" id="closeMetrics" aria-label="Close metrics">×</button>
+    </header>
+    <div id="metricsContent" class="metric-content" aria-label="Compare two GRACE datasets">
+      <div class="metric-selectors">
+        <label for="metricA">Dataset A<select id="metricA"></select></label>
+        <label for="metricB">Dataset B<select id="metricB"></select></label>
+      </div>
+      <p class="metric-region" id="metricScope" aria-live="polite">Selected region</p>
+      <div class="metric-grid" aria-live="polite">
+        <div><span>Correlation (r)</span><strong id="metricCorr">—</strong></div>
+        <div><span>NSE</span><strong id="metricNse">—</strong></div>
+        <div><span>RMSE (cm)</span><strong id="metricRmse">—</strong></div>
+      </div>
+      <p class="metric-note" id="metricNote">Uses only paired valid months, without filling observation gaps. NSE uses Dataset B as the reference.</p>
+    </div>
+  </section>
+
+  <div class="analysis-backdrop" id="analysisBackdrop" hidden></div>
+  <section class="drawer" id="chartDrawer" role="dialog" aria-modal="true" aria-hidden="true" aria-label="Regional water storage charts">
+    <div class="drawer-heading" title="Drag to move this window"><div><span class="eyebrow">EXPLORE THE SELECTED AREA · DRAG TO MOVE</span><h2 id="studyName">Regional water storage</h2></div>
+      
+      <button id="closeChart" aria-label="Close charts">×</button></div>
+    <p id="studyInfo" class="muted">Monthly terrestrial water storage anomalies (cm)</p>
+    <div class="analysis-tabs" role="tablist" aria-label="Choose analysis view">
+      <button type="button" id="tabTime" class="analysis-tab active" role="tab" aria-selected="true" aria-controls="timeTabPanel">Time series</button>
+      <button type="button" id="tabSpatial" class="analysis-tab" role="tab" aria-selected="false" aria-controls="spatialTabPanel">Spatial map</button>
+    </div>
+    <div id="timeTabPanel" role="tabpanel" aria-labelledby="tabTime" class="analysis-view">
+    <div class="analysis-pickers">
+      <label for="timeRegionSelect">Boundary / region<select id="timeRegionSelect" aria-label="Time series boundary or region"></select></label>
+      <label for="timeLayerSelect">Dataset<select id="timeLayerSelect" aria-label="Choose displayed time-series dataset"></select></label>
+    </div>
+    <div class="series-toggles">
+      <label><input type="checkbox" data-layer="tws_m" checked><span class="swatch" style="background:#64cbed"></span>Downscaled (0.05°)</label>
+      <label><input type="checkbox" data-layer="tws_m_1km" checked><span class="swatch" style="background:#9ce5a9"></span>Thailand (1 km)</label>
+      <label><input type="checkbox" data-layer="obs_m" checked><span class="swatch" style="background:#ffc36f"></span>Original ensemble</label>
+      <label><input type="checkbox" data-layer="csr"><span class="swatch" style="background:#ae8ff2"></span>CSR</label>
+      <label><input type="checkbox" data-layer="gsfc"><span class="swatch" style="background:#80e2aa"></span>GSFC</label>
+      <label><input type="checkbox" data-layer="jpl"><span class="swatch" style="background:#ff8594"></span>JPL</label>
+    </div>
+    <div class="chart-controls">
+      <label class="trend-control" for="trendToggle"><input type="checkbox" id="trendToggle"> Show linear trend (dashed)</label>
+      
+    </div>
+    <div class="plot-wrap" id="plotWrap"><div id="plot" role="img" aria-label="Interactive monthly GRACE terrestrial water storage time series"></div></div>
+    <div id="trendRates" class="trend-rates" aria-live="polite"></div>
+    </div>
+    <div id="spatialTabPanel" role="tabpanel" aria-labelledby="tabSpatial" class="analysis-view" hidden>
+    <!-- Scientific spatial plot uses the selected shapefile and the CURRENT map layer/month.
+         It is rendered locally from quantized NetCDF values, never from blurred basemap tiles. -->
+    <div class="analysis-pickers">
+      <label for="spatialRegionSelect">Boundary / region<select id="spatialRegionSelect" aria-label="Choose the area for the spatial map"></select></label>
+      <label for="spatialLayerSelect">Dataset<select id="spatialLayerSelect" aria-label="Choose spatial GRACE dataset"></select></label>
+    </div>
+    <section class="region-spatial" id="regionSpatial" aria-label="Spatial TWSA map for the selected region">
+      <div class="region-spatial-heading" id="regionSpatialHeading">Spatial GRACE map</div>
+      <canvas id="regionSpatialCanvas" width="1120" height="380" role="img" aria-label="Georeferenced raster of the selected polygon with longitude and latitude axes and a TWSA colorbar"></canvas>
+    </section>
+    </div>
+    <div class="drawer-buttons" role="group" aria-label="Data and figure downloads">
+      <button id="csvButton" type="button">↓ CSV</button>
+      <button id="timePngButton" type="button">↓ Time series PNG</button>
+      <button id="spatialPngButton" type="button">↓ Spatial map PNG</button>
+    </div>
+  </section>
+
+  <dialog id="aboutDialog">
+    <header class="modal-header"><h2>Understanding the GRACE datasets</h2><button id="closeAbout" title="Close">×</button></header>
+    <p><b>TWSA</b> is terrestrial water storage anomaly: how much estimated total land-water storage differs from a baseline average, expressed as centimeters of equivalent water thickness. It is not the water depth of a flood.</p>
+    <p><b>Downscaled ensemble (0.05°), <code>tws_m</code>:</b> the monthly ensemble mean of mass-conserving downscaled CSR, GSFC and JPL mascon estimates. Finer grid patterns are model-dependent, not independent satellite measurements at 5-km resolution. The downscaled file specifies a 2004–2009 reference baseline.</p>
+    <p><b>Thailand downscaled ensemble (nominal 1 km), <code>tws_m_1km</code>:</b> Thailand-specific mass-conserved downscaled GRACE/GRACE-FO ensemble mean. Only <code>tws_m</code> is used from each 1-km NetCDF file. The finer grid is a model-derived estimate, not an independently measured 1-km GRACE resolution.</p>
+    <p><b>Original interpolated ensemble (0.05°), <code>obs_m</code>:</b> average of the original three mascon estimates interpolated onto the downscaled grid for like-for-like maps. Interpolation is only a grid conversion: it does not create more independent GRACE measurements.</p>
+    <p><b>CSR mascon (0.25°, RL06.3):</b> University of Texas Center for Space Research solution. Estimates gravity-driven terrestrial mass changes using mascon processing, with corrections such as geocenter, low-degree coefficients and glacial isostatic adjustment in the public corrected product. A 0.25° output grid is not equivalent to 0.25° independent resolution. <a href="https://www2.csr.utexas.edu/grace/RL0603_mascons.html" target="_blank" rel="noopener">CSR documentation</a>.</p>
+    <p><b>GSFC mascon (0.5°, RL06v2.0):</b> NASA Goddard Space Flight Center's mascon estimate. The distributed 0.5° equal-angle grid represents a coarser mass-estimation solution; spatial constraints help reduce noise and leakage. <a href="https://earth.gsfc.nasa.gov/geo/data/grace-mascons" target="_blank" rel="noopener">GSFC documentation</a>.</p>
+    <p><b>JPL mascon (0.5°, RL06.3Mv04):</b> NASA Jet Propulsion Laboratory's mascon solution for changes in water, land ice and other mass stores, displayed here as equivalent water thickness anomalies. The product and any coastal-leakage/CRI options should be checked in the original file metadata. <a href="https://podaac.jpl.nasa.gov/dataset/TELLUS_GRAC-GRFO_MASCON_GRID_RL06.3_V4" target="_blank" rel="noopener">JPL documentation</a>.</p>
+    <p><b>Versions:</b> release labels above reflect the expected versions for the named source files. Confirm each file's attributes before citing. The three source grids are retained in this explorer, even when their images are rendered more sharply.</p>
+    <p><b>Map color limits:</b> change the negative and positive limits in the layer panel. Default −50 to +50 cm; a wider range makes more values appear near the central pale color. Changing the palette does not change underlying TWSA or the chart.</p>
+    <p><b>Geographic mask:</b> map colors are restricted to the downscaled GRACE land footprint (optionally intersected with your Southeast Asia polygon), including native CSR, GSFC and JPL layers. Other locations remain transparent.</p>
+    <p><b>Missing observations:</b> months without valid satellite data remain blank. Hover over the time-series chart to read values and click a date to select that month; no temporal values are invented.</p>
+  </dialog>
+
+  <!-- Frontend-only welcome guide: no GRACE data rebuilding required. -->
+  <dialog id="welcomeDialog" class="welcome-dialog" aria-labelledby="welcomeTitle" aria-describedby="welcomeIntro">
+    <div class="welcome-header">
+      <div>
+        <span class="welcome-kicker">GRACE EXPLORER · QUICK GUIDE</span>
+        <h2 id="welcomeTitle" tabindex="-1">Welcome to GRACE Explorer</h2>
+        <p id="welcomeIntro">See how water stored across South and Southeast Asia changes over time.</p>
+      </div>
+      <button type="button" id="welcomeClose" class="welcome-close" aria-label="Close welcome guide">×</button>
+    </div>
+    <div class="welcome-body">
+      <p class="welcome-intro">You can explore the map in just a few steps:</p>
+      <ol class="welcome-steps">
+        <li><span class="welcome-step-number">1</span><div><strong>Choose a water storage map</strong><p>Choose <b>Original interpolated (5 km)</b>, <b>Downscaled (5 km)</b>, or <b>Thailand downscaled (1 km)</b> from the large buttons on the left. The 1-km option appears only when those files were included in the build.</p></div></li>
+        <li><span class="welcome-step-number">2</span><div><strong>Travel through time</strong><p>Choose a year and month at the bottom, or press <b>▶ Play</b> to watch changes. Months without observations are left blank.</p></div></li>
+        <li><span class="welcome-step-number">3</span><div><strong>Explore a country, province, or basin</strong><p>Hover to see its name. Click or double-click a boundary to open its easy-to-read <b>Time series</b>, with available datasets and trends selected. For spatial maps, use <b>Technical use</b>.</p></div></li>
+        <li><span class="welcome-step-number">4</span><div><strong>Need more tools?</strong><p>Open <b>Technical use</b> for CSR, GSFC and JPL layers, detailed spatial maps, Plotly charts, metrics, and downloads.</p></div></li>
+      </ol>
+      <div class="welcome-explainer"><strong>Reading the colors</strong><p><span class="welcome-color-low">Warm colors</span> indicate below-average water storage; <span class="welcome-color-high">blue colors</span> indicate above-average storage. These are anomalies relative to a baseline, not floodwater depths.</p></div>
+      <p class="welcome-caution"></p>
+    </div>
+    <div class="welcome-footer">
+      <span class="welcome-manual-note">The guide opens only when you select <b>? Guide</b>.</span>
+      <button type="button" id="welcomeStart" class="welcome-start">Start exploring</button>
+    </div>
+  </dialog>
+</body>
+</html>
