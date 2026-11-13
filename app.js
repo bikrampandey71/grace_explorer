@@ -2,7 +2,9 @@
    No fetch(), XHR, module imports, or local web server required. */
 'use strict';
 const $=id=>document.getElementById(id);
-const M=window.GRACE_MANIFEST, R=window.GRACE_REGION_SERIES, B=window.GRACE_BOUNDARIES;
+const M=window.GRACE_MANIFEST, R=window.GRACE_REGION_SERIES;
+// Boundaries are loaded after the first map frame so heavy Level-2 JSON does not block the initial map.
+let B=window.GRACE_BOUNDARIES||null;
 const MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
 const ORDER=['tws_m','tws_m_1km','obs_m','csr','gsfc','jpl'];
 const SERIES_COLORS={tws_m:'#64cbed',tws_m_1km:'#9ce5a9',obs_m:'#ffc36f',csr:'#ae8ff2',gsfc:'#80e2aa',jpl:'#ff8594'};
@@ -19,7 +21,7 @@ const st={map:null,base:{},overlay:null,regions:null,level2Regions:null,boundary
     month:0,layer:'tws_m',region:'footprint',playing:false,timer:null,chartOpen:false,
     series:{tws_m:true,tws_m_1km:true,obs_m:true,csr:false,gsfc:false,jpl:false},
     colorMin:-50,colorMax:50,fieldCache:new Map(),fieldPending:new Map(),
-    overlayToken:0,overlayLayer:null,plotReady:false,lut:null,lutKey:null,showTrend:false,footprint:null,regionalRenderToken:0,activeTab:"time",analysisOrigin:'technical',publicOpen:false,publicSeries:Object.fromEntries(ORDER.map(k=>[k,true])),publicTrend:true};
+    overlayToken:0,overlayLayer:null,lut:null,lutKey:null,showTrend:false,footprint:null,regionalRenderToken:0,activeTab:"time",analysisOrigin:'technical',publicOpen:false,publicSeries:Object.fromEntries(ORDER.map(k=>[k,true])),publicTrend:true,mobileTapRegion:null,mobileTapLatLng:null};
 function friendly(date){const [y,m]=date.split('-').map(Number);return `${MONTHS[m-1]} ${y}`;}
 function pretty(x,n=2){return Number.isFinite(x)?Number(x).toFixed(n):'—';}
 function say(message){const n=$('toast');n.textContent=message;n.classList.add('show');clearTimeout(say.t);say.t=setTimeout(()=>n.classList.remove('show'),3000);}
@@ -121,13 +123,17 @@ function animateBoundaryHover(layer, feature, entered){
 }
 function regionFeatures(){
  if(!B?.features)return [];
+ // Sort only the small country/basin collection, not thousands of Level-2 polygons.
+ // Fine boundaries are rendered separately above the countries at close zoom.
+ const visible=B.features.filter(f=>!['southeast_asia','tonle_sap_basin'].includes(f.properties?.id));
  const area=f=>{const b=region(f.properties?.id)?.bbox;
   return b?Math.abs((b[2]-b[0])*(b[3]-b[1])):Infinity;};
- return B.features.filter(f=>!['southeast_asia','tonle_sap_basin'].includes(f.properties?.id))
-          .slice().sort((a,b)=>area(b)-area(a));
+ return visible.filter(f=>f.properties?.kind!=='level2').sort((a,b)=>area(b)-area(a))
+         .concat(visible.filter(f=>f.properties?.kind==='level2'));
 }
 function openAreaTimeSeries(id){
  if(!region(id))return;
+ hideMobileBoundaryCard();
  st.map?.closePopup();
  chooseRegion(id,false);
  openPublicTimeSeries();
@@ -140,54 +146,120 @@ function openAreaTimeSeries(id){
 function useTapBoundaryPopup(){
  return Boolean(window.matchMedia?.('(hover: none), (pointer: coarse)').matches) || window.innerWidth <= 700;
 }
-function showTapBoundaryPopup(id, latlng){
- const r=region(id),map=st.map;
- if(!r || !map || !window.L)return;
- chooseRegion(id,false); // Highlight only the existing boundary polygon.
- // Some mobile browsers synthesize mouseover on tap; prevent a title-only
- // tooltip from hiding the action button inside the touch popup.
- map.closeTooltip?.();
- st.boundaryLayers.get(id)?.layer?.closeTooltip?.();
-
- const wrapper=document.createElement('div');
- wrapper.className='grace-touch-popup';
- const title=document.createElement('strong');
- title.className='grace-touch-popup-title';
- title.textContent=r.name||'Selected area';
- wrapper.append(title);
-
- const date=M.dates[st.month];
- const value=R?.[id]?.[st.layer]?.[st.month];
- const description=document.createElement('div');
- description.className='grace-touch-popup-value';
- if(st.layer==='none'){
-  description.textContent=date+' · No GRACE layer selected';
- }else if(Number.isFinite(value)){
-  description.textContent=date+' · Mean TWSA: '+value.toFixed(2)+' cm';
- }else{
-  description.textContent=date+' · TWSA unavailable';
- }
- wrapper.append(description);
-
- const action=document.createElement('button');
- action.type='button';
- action.className='grace-touch-popup-action';
- action.textContent='Time series';
- action.setAttribute('aria-label','Show time series for '+(r.name||'selected area'));
- action.addEventListener('click',event=>{
-  event.preventDefault();
-  event.stopPropagation();
-  openAreaTimeSeries(id);
- });
- wrapper.append(action);
-
- const b=r.bbox;
- const where=latlng||(b?L.latLng((b[0]+b[2])/2,(b[1]+b[3])/2):map.getCenter());
- L.popup({className:'grace-touch-boundary-popup',closeButton:true,
-  closeOnClick:true,autoClose:true,autoPan:true,keepInView:true,
-  maxWidth:290,minWidth:195,autoPanPadding:[18,18]})
-  .setLatLng(where).setContent(wrapper).openOn(map);
+// Display an ordinary HTML card, not a Leaflet popup. This remains tappable
+// even while district canvas layers redraw after a mobile zoom or pan.
+function hideMobileBoundaryCard(){
+ const card=$('mobileBoundaryCard');
+ if(card)card.hidden=true;
+ st.mobileTapRegion=null;st.mobileTapLatLng=null;
 }
+function positionMobileBoundaryCard(){
+ const card=$('mobileBoundaryCard'),map=st.map;
+ if(!card||card.hidden||!map||!st.mobileTapLatLng)return;
+ const bounds=$('map').getBoundingClientRect();
+ const pt=map.latLngToContainerPoint(st.mobileTapLatLng);
+ const rect=card.getBoundingClientRect();
+ const width=rect.width||260,height=rect.height||145;
+ const x=bounds.left+pt.x,y=bounds.top+pt.y;
+ let left=Math.max(8,Math.min(window.innerWidth-width-8,x-width/2));
+ let top=y-height-13;
+ if(top<66)top=y+18;
+ top=Math.max(66,Math.min(window.innerHeight-height-14,top));
+ card.style.left=Math.round(left)+'px';
+ card.style.top=Math.round(top)+'px';
+}
+function showTapBoundaryPopup(id,latlng){
+ const r=region(id),map=st.map,card=$('mobileBoundaryCard');
+ if(!r||!map||!card)return;
+ chooseRegion(id,false);
+ st.boundaryLayers.get(id)?.layer?.closeTooltip?.();
+ const date=M.dates[st.month],v=R?.[id]?.[st.layer]?.[st.month];
+ $('mobileBoundaryName').textContent=r.name||'Selected area';
+ $('mobileBoundaryValue').textContent=st.layer==='none'?
+   `${date} · No GRACE layer selected`:
+   Number.isFinite(v)?`${date} · Mean TWSA: ${v.toFixed(2)} cm`:
+   `${date} · TWSA unavailable`;
+ st.mobileTapRegion=id;
+ const box=r.bbox;
+ st.mobileTapLatLng=latlng||(box?L.latLng((box[0]+box[2])/2,(box[1]+box[3])/2):map.getCenter());
+ card.hidden=false;
+ requestAnimationFrame(positionMobileBoundaryCard);
+}
+// GeoJSON point-in-polygon fallback: mobile click is not dependent on a Leaflet
+// canvas feature being drawn or receiving the event. Polygon holes are excluded.
+function pointInsideRing(lon,lat,ring){
+ let inside=false;
+ for(let i=0,j=ring.length-1;i<ring.length;j=i++){
+  const [xi,yi]=ring[i],[xj,yj]=ring[j];
+  if((yi>lat)!==(yj>lat) && lon<(xj-xi)*(lat-yi)/(yj-yi)+xi)inside=!inside;
+ }
+ return inside;
+}
+function pointInsideGeometry(lon,lat,geom){
+ if(!geom)return false;
+ const polygons=geom.type==='Polygon'?[geom.coordinates]:
+   geom.type==='MultiPolygon'?geom.coordinates:[];
+ return polygons.some(poly=>Array.isArray(poly)&&poly.length>0&&
+  pointInsideRing(lon,lat,poly[0])&&
+  !poly.slice(1).some(hole=>pointInsideRing(lon,lat,hole)));
+}
+let touchFeatureIndex=null;
+function touchRegionAt(latlng){
+ if(!B?.features)return null;
+ if(!touchFeatureIndex){
+  touchFeatureIndex=B.features.flatMap(f=>{
+   const id=f.properties?.id,r=region(id);
+   return r&&!['footprint','southeast_asia','tonle_sap_basin'].includes(id)&&r.bbox
+     ?[{id,bbox:r.bbox,feature:f,level2:f.properties?.kind==='level2',
+        size:Math.abs((r.bbox[2]-r.bbox[0])*(r.bbox[3]-r.bbox[1]))}]:[];
+  });
+ }
+ const lon=((latlng.lng+180)%360+360)%360-180,lat=latlng.lat;
+ const detailed=st.map?.getZoom()>=5.5;
+ let best=null;
+ for(const item of touchFeatureIndex){
+  if(item.level2&&!detailed)continue;
+  const [south,west,north,east]=item.bbox;
+  if(lat<south||lat>north||lon<west||lon>east)continue;
+  if(best&&item.size>=best.size)continue;
+  if(pointInsideGeometry(lon,lat,item.feature.geometry))best=item;
+ }
+ return best?.id||null;
+}
+function installMobileBoundaryFallback(map){
+ // Native map click is fired after a tap, not a drag.
+ map.on('click',event=>{
+  if(!useTapBoundaryPopup())return;
+  const id=touchRegionAt(event.latlng);
+  if(id)showTapBoundaryPopup(id,event.latlng);
+  else hideMobileBoundaryCard();
+ });
+ // Capture pointer events at the map itself as a second path. Some mobile
+ // browsers don't deliver a Leaflet feature-click after panning/Canvas redraw.
+ // Only a short, stationary touch counts; swipes still pan normally.
+ const element=map.getContainer();
+ let origin=null;
+ element.addEventListener('pointerdown',event=>{
+  if(!useTapBoundaryPopup()||event.pointerType==='mouse')return;
+  origin={id:event.pointerId,x:event.clientX,y:event.clientY,time:performance.now()};
+ },true);
+ element.addEventListener('pointercancel',()=>{origin=null;},true);
+ element.addEventListener('pointerup',event=>{
+  if(!origin||event.pointerId!==origin.id)return;
+  const move=Math.hypot(event.clientX-origin.x,event.clientY-origin.y);
+  const duration=performance.now()-origin.time;
+  origin=null;
+  if(move>11||duration>650||!useTapBoundaryPopup())return;
+  const rect=element.getBoundingClientRect();
+  const latlng=map.containerPointToLatLng([event.clientX-rect.left,event.clientY-rect.top]);
+  const id=touchRegionAt(latlng);
+  if(id)showTapBoundaryPopup(id,latlng);
+ },true);
+ map.on('dragstart',hideMobileBoundaryCard);
+ map.on('zoomstart',hideMobileBoundaryCard);
+ map.on('resize',()=>{if(st.mobileTapRegion)positionMobileBoundaryCard();});
+}
+
 function installBoundaryInteractions(map){
  const features=regionFeatures();if(!features.length)return;
  const configure=(feature,layer)=>{
@@ -226,60 +298,67 @@ function installBoundaryInteractions(map){
                        renderer:L.canvas({padding:.4}),onEachFeature:configure};
  st.regions=L.geoJSON({type:'FeatureCollection',features:overview},desktopOptions).addTo(map);
  if(detail.length){
-  // Large admin-2 GeoJSON collections (e.g. Thailand/Indonesia) are expensive
-  // on low-memory phones. Keep V17 desktop rendering exactly as before, but
-  // on touch devices draw ONLY geometries that intersect the viewport.
+  // Viewport-based Level-2 drawing for desktop AND phones.
+  // Keep only the administrative features that intersect the current map view.
+  // Scientific data, original polygons and clickable geometry are never changed.
   const touch=useTapBoundaryPopup();
-  if(!touch){
-   const sync=()=>{
-    const show=map.getZoom()>=5.5;
-    if(show&&!st.level2Regions){
-     st.level2Regions=L.geoJSON({type:'FeatureCollection',features:detail},desktopOptions);
-    }
-    if(show&&!map.hasLayer(st.level2Regions))st.level2Regions.addTo(map);
-    else if(!show&&st.level2Regions&&map.hasLayer(st.level2Regions))map.removeLayer(st.level2Regions);
-   };
-   map.on('zoomend',sync);sync();
-  }else{
-   const touchOptions={style:boundaryStyle,interactive:true,bubblingMouseEvents:false,
-    // Leaflet simplifies geometry for DISPLAY only; numeric values are never changed.
-    smoothFactor:2.1,renderer:L.canvas({padding:.12}),onEachFeature:configure};
-   const boundsById=new Map(detail.map(f=>[f.properties?.id,region(f.properties?.id)?.bbox]));
-   let visibleIds=new Set(),lastKey='',pending=0;
-   const sync=()=>{
-    pending=0;
-    // Avoid loading thousands of small polygons at a broad regional view.
-    if(map.getZoom()<6){
-     if(st.level2Regions&&map.hasLayer(st.level2Regions))map.removeLayer(st.level2Regions);
-     for(const id of visibleIds)st.boundaryLayers.delete(id);
-     visibleIds=new Set();lastKey='';st.level2Regions=null;return;
-    }
-    const b=map.getBounds(),pad=.45;
-    const w=b.getWest()-pad,e=b.getEast()+pad,s=b.getSouth()-pad,n=b.getNorth()+pad;
-    const items=detail.filter(f=>{
-     const box=boundsById.get(f.properties?.id);
-     return box && box[1]<=e && box[3]>=w && box[0]<=n && box[2]>=s;
-    });
-    const nextKey=items.map(f=>f.properties?.id).join('|');
-    if(nextKey===lastKey&&st.level2Regions&&map.hasLayer(st.level2Regions))return;
-    const oldLayer=st.level2Regions;
-    if(oldLayer&&map.hasLayer(oldLayer))map.removeLayer(oldLayer);
+  const minDetailZoom=touch?6:5.5;
+  const options={style:boundaryStyle,interactive:true,bubblingMouseEvents:false,
+    smoothFactor:touch?2.1:1.25,renderer:L.canvas({padding:touch?.12:.28}),onEachFeature:configure};
+  const boundsById=new Map(detail.map(f=>[f.properties?.id,region(f.properties?.id)?.bbox]));
+  let visibleIds=new Set(),lastKey='',pending=0;
+  const sync=()=>{
+   pending=0;
+   if(map.getZoom()<minDetailZoom){
+    if(st.level2Regions&&map.hasLayer(st.level2Regions))map.removeLayer(st.level2Regions);
     for(const id of visibleIds)st.boundaryLayers.delete(id);
-    visibleIds=new Set(items.map(f=>f.properties?.id));
-    lastKey=nextKey;
-    st.level2Regions=items.length
-      ?L.geoJSON({type:'FeatureCollection',features:items},touchOptions).addTo(map)
-      :null;
-   };
-   const schedule=()=>{
-    if(pending)cancelAnimationFrame(pending);
-    pending=requestAnimationFrame(sync);
-   };
-   map.on('moveend zoomend',schedule);
-   schedule();
-  }
+    visibleIds=new Set();lastKey='';st.level2Regions=null;
+    return;
+   }
+   const b=map.getBounds(),pad=touch?.45:.30;
+   const w=b.getWest()-pad,e=b.getEast()+pad,s=b.getSouth()-pad,n=b.getNorth()+pad;
+   const items=detail.filter(f=>{
+    const box=boundsById.get(f.properties?.id);
+    return box && box[1]<=e && box[3]>=w && box[0]<=n && box[2]>=s;
+   });
+   const nextKey=items.map(f=>f.properties?.id).join('|');
+   if(nextKey===lastKey&&st.level2Regions&&map.hasLayer(st.level2Regions))return;
+   const oldLayer=st.level2Regions;
+   if(oldLayer&&map.hasLayer(oldLayer))map.removeLayer(oldLayer);
+   for(const id of visibleIds)st.boundaryLayers.delete(id);
+   visibleIds=new Set(items.map(f=>f.properties?.id));
+   lastKey=nextKey;
+   st.level2Regions=items.length
+     ?L.geoJSON({type:'FeatureCollection',features:items},options).addTo(map)
+     :null;
+  };
+  const schedule=()=>{
+   if(pending)cancelAnimationFrame(pending);
+   pending=requestAnimationFrame(sync);
+  };
+  map.on('moveend zoomend',schedule);
+  schedule();
  }
+
 }
+// Keep the website responsive while reading its full Level-2 map geometry.
+// This also works when index.html is opened locally via file://.
+function loadBoundariesOnDemand(){
+ if(!st.map || st.regions)return;
+ touchFeatureIndex=null;
+ if(window.GRACE_BOUNDARIES){
+  B=window.GRACE_BOUNDARIES;
+  installBoundaryInteractions(st.map);
+  return;
+ }
+ loadScript('data/boundaries.js')
+  .then(()=>{
+   B=window.GRACE_BOUNDARIES;
+   if(B && st.map && !st.regions)installBoundaryInteractions(st.map);
+  })
+  .catch(error=>{console.error('Boundary data unavailable:',error);say('Some geographic boundaries could not be loaded.');});
+}
+
 function initializeMap(){
  if(!window.L){$('error').hidden=false;return;}
  // Preserve V17 natural zoom animation, map controls and tile behavior.
@@ -303,7 +382,10 @@ function initializeMap(){
  map.fitBounds([[extent[0],extent[1]],[extent[2],extent[3]]],{padding:[20,20],maxZoom:6});
  // Do not allow zooming out beyond the initial Southeast Asia overview.
  map.setMinZoom(map.getZoom());
- installBoundaryInteractions(map);
+ // Map tap fallback works even if an administrative canvas path is not rendered.
+ installMobileBoundaryFallback(map);
+ // Defer the potentially large boundary source until after the initial map draw.
+ requestAnimationFrame(()=>setTimeout(loadBoundariesOnDemand,60));
  // Only shapefile regions are selectable; empty-map clicks never add points.
  map.on('mousemove',ev=>updateCursorCoordinates(ev.latlng));
  map.on('mouseout',()=>{
@@ -497,7 +579,8 @@ function setMonth(i){
  $('yearSelect').value=date.slice(0,4);$('monthSelect').value=date.slice(5,7);
  $('monthSlider').value=String(st.month);
  for(const [j,span] of [...$('availability').children].entries())span.classList.toggle('current',j===st.month);
- updateDateSelectors();showOverlay();if(st.publicOpen)renderPublicChart();
+  updateDateSelectors();showOverlay();if(st.publicOpen)renderPublicChart();
+  if(st.mobileTapRegion)showTapBoundaryPopup(st.mobileTapRegion,st.mobileTapLatLng);
  if(st.chartOpen){
   if(st.activeTab==='time')updatePlotCursor();
   else drawRegionalSpatialMap();
@@ -543,8 +626,8 @@ function chooseRegion(id,zoom){
  outlineRegion();
  const r=region(id);if(zoom&&st.map){const b=r.bbox;st.map.fitBounds([[b[0],b[1]],[b[2],b[3]]],{padding:[35,35],maxZoom:8});}
  describeStudy();
- // A region click should open its popup immediately; only render costly Plotly
- // work when the analysis dialog is actually visible.
+ // A region click should open its popup immediately. The SVG chart
+ // renders only while its analysis window is visible.
  if(st.chartOpen)drawChart();
  updateTechnicalMetrics();
 }
@@ -771,8 +854,8 @@ function linearTrend(values){
  return {slope,intercept:my-slope*mx,first:pts[0][0],last:pts.at(-1)[0],n,
          slopeCmYear:slope*12};
 }
-// Lightweight accessible public chart, without Plotly or backend computation.
-// Technical use retains its own Plotly window with all its existing selectors.
+// Lightweight accessible public chart using native SVG.
+// Technical use has its own lightweight SVG chart with the existing selectors.
 const PUBLIC_P={w:1120,h:455,l:88,r:1080,t:47,b:359};
 const PUBLIC_MOBILE_P={w:560,h:445,l:67,r:535,t:40,b:345};
 function publicPlotGeometry(){return window.innerWidth<=640?PUBLIC_MOBILE_P:PUBLIC_P;}
@@ -898,107 +981,117 @@ function renderPublicChart(){
 
 }
 
-// Interactive Plotly time series. Cached numeric regional means are reused
-// directly; browser interaction never requests the original NetCDF files.
-const PLOT_EXPORT_COLORS={tws_m:'#087ca6',tws_m_1km:'#409e57',obs_m:'#b66b17',csr:'#7845b2',gsfc:'#1e875a',jpl:'#bb3758'};
-let plotRequest=0;
-function buildPlotSpec(exportLight=false){
- const s=activeSeries(),ids=ORDER.filter(k=>st.series[k]);
- const dates=M.dates.map(d=>d+'-01');
- const traces=[];
+// Native SVG chart for Technical use: no external plotting library required.
+// Dataset toggles, linear trends, month selection and missing-data gaps remain.
+const TECH_COLORS={tws_m:'#167da0',tws_m_1km:'#389755',obs_m:'#ad681c',
+                   csr:'#7943a7',gsfc:'#198359',jpl:'#b93561'};
+function technicalChartSvg(light=false){
+ const data=activeSeries(),ids=ORDER.filter(k=>st.series[k]);
+ const w=1200,h=490,l=93,r=1165,t=light?85:35,b=light?390:390;
+ const n=M.dates.length;
+ const values=ids.flatMap(k=>(data?.[k]||[]).filter(Number.isFinite));
+ let low=values.length?Math.min(0,...values):-10;
+ let high=values.length?Math.max(0,...values):10;
+ const pad=Math.max(3,(high-low)*.12);low-=pad;high+=pad;
+ const x=i=>n<=1?(l+r)/2:l+(i/(n-1))*(r-l);
+ const y=v=>b-(v-low)/(high-low)*(b-t);
+ const ink=light?'#233d54':'#ebf5fd',grid=light?'#d6e4ed':'#31516a';
+ const result=[];
+ if(light){
+  result.push(svg('rect',{x:0,y:0,width:w,height:h,fill:'#ffffff'}));
+  result.push(svg('text',{x:65,y:41,fill:ink,'font-size':26,'font-weight':700},
+   `GRACE water storage · ${region(st.region)?.name||'Selected region'}`));
+ } else result.push(svg('rect',{x:0,y:0,width:w,height:h,fill:'#102b43'}));
+ for(let z=0;z<=5;z++){
+  const v=low+(high-low)*z/5,p=y(v);
+  result.push(svg('line',{x1:l,y1:p,x2:r,y2:p,stroke:grid,'stroke-width':1}));
+  result.push(svg('text',{x:l-12,y:p+5,'text-anchor':'end',fill:ink,'font-size':16},v.toFixed(0)));
+ }
+ const years=[];
+ for(let i=0;i<n;i++){
+  const [yr,month]=M.dates[i].split('-').map(Number);
+  if(n<=16){if(i===0||i===n-1||i%2===0)years.push([i,MONTHS[month-1].slice(0,3)+' '+yr]);}
+  else if(month===1&&yr%2===0)years.push([i,String(yr)]);
+ }
+ if(!years.length&&n)years.push([0,M.dates[0]]);
+ for(const [i,label] of years){
+  result.push(svg('line',{x1:x(i),x2:x(i),y1:b,y2:b+6,stroke:grid}));
+  result.push(svg('text',{x:x(i),y:b+27,'text-anchor':'middle',fill:ink,'font-size':15},label));
+ }
  for(const id of ids){
-  const values=s?.[id]||Array(M.dates.length).fill(null);
-  const count=values.filter(Number.isFinite).length;
-  const color=exportLight?PLOT_EXPORT_COLORS[id]:SERIES_COLORS[id];
-  traces.push({
-   type:'scatter',mode:count<=2?'markers':'lines+markers',
-   name:M.labels[id],x:dates,y:values.map(v=>Number.isFinite(v)?v:null),
-   connectgaps:false,
-   line:{color,width:1.7,shape:'linear'},
-   marker:{color,size:count<=2?9:3.5},
-   hovertemplate:'%{x|%B %Y}<br>%{y:.2f} cm<extra>'+M.labels[id]+'</extra>'
-  });
+  const items=data?.[id]||[],color=light?TECH_COLORS[id]:SERIES_COLORS[id];
+  let path='',connect=false,num=0;
+  for(let i=0;i<n;i++){
+   const v=items[i];if(!Number.isFinite(v)){connect=false;continue;}
+   path+=(connect?'L':'M')+x(i).toFixed(2)+' '+y(v).toFixed(2)+' ';
+   connect=true;num++;
+  }
+  if(path)result.push(svg('path',{d:path.trim(),stroke:color,fill:'none',
+     'stroke-width':2.15,'stroke-linejoin':'round','stroke-linecap':'round'}));
+  if(num>0&&num<=2){for(let i=0;i<n;i++)if(Number.isFinite(items[i]))
+   result.push(svg('circle',{cx:x(i),cy:y(items[i]),r:5.2,fill:color}));}
   if(st.showTrend){
-   const fit=linearTrend(values);
-   if(fit){
-    traces.push({type:'scatter',mode:'lines',showlegend:false,hoverinfo:'skip',
-     name:M.labels[id]+' trend',x:[dates[fit.first],dates[fit.last]],
-     y:[fit.intercept+fit.slope*fit.first,fit.intercept+fit.slope*fit.last],
-     line:{color,width:1.45,dash:'dash'}});
-   }
+   const fit=linearTrend(items);
+   if(fit)result.push(svg('line',{x1:x(fit.first),y1:y(fit.intercept+fit.slope*fit.first),
+    x2:x(fit.last),y2:y(fit.intercept+fit.slope*fit.last),stroke:color,
+    'stroke-width':1.7,'stroke-dasharray':'8 5'}));
   }
  }
- const ink=exportLight?'#284157':'#e5f3fc';
- const grid=exportLight?'#dbe5ed':'#294b66';
- const paper=exportLight?'#ffffff':'#0b263e';
- const layout={
-  paper_bgcolor:paper,plot_bgcolor:paper,
-  font:{family:'Segoe UI, Arial, sans-serif',size:16,color:ink},
-  margin:{l:86,r:25,t:22,b:90},autosize:true,
-  showlegend:true,legend:{orientation:'h',y:1.17,x:0,font:{size:13}},
-  xaxis:{title:{text:'Date',standoff:15,font:{size:18}},
-    type:'date',tick0:dates[0],dtick:M.dates.length<=24?'M1':'M24',
-    tickformat:M.dates.length<=24?'%b %Y':'%Y',
-    gridcolor:grid,linecolor:grid,zeroline:false,automargin:true,
-    rangeslider:{visible:!exportLight,thickness:.10,bgcolor:exportLight?'#f4f7fa':'#18374f'},
-    range:[dates[0],monthAfter(M.dates.at(-1))]},
-  yaxis:{title:{text:'TWSA (cm)',standoff:15,font:{size:18}},gridcolor:grid,
-    zeroline:true,zerolinecolor:exportLight?'#8397a7':'#7b9cb7',automargin:true},
-  hovermode:'x unified',hoverlabel:{bgcolor:exportLight?'#fff':'#14344e',font:{size:14,color:ink}},
-  dragmode:'zoom',hoverdistance:24,
-  shapes:[currentMonthLine(exportLight)],
-  uirevision:'region:'+st.region
- };
- return {traces,layout};
+ if(n)result.push(svg('line',{x1:x(st.month),x2:x(st.month),y1:t,y2:b,
+  stroke:light?'#a67622':'#e9cb7e','stroke-dasharray':'5 5','stroke-width':1.5}));
+ result.push(svg('text',{x:(l+r)/2,y:h-20,'text-anchor':'middle',fill:ink,
+  'font-size':20,'font-weight':600},'Date'));
+ result.push(svg('text',{x:28,y:(t+b)/2,transform:`rotate(-90 28 ${(t+b)/2})`,
+  'text-anchor':'middle',fill:ink,'font-size':20,'font-weight':600},'TWSA (cm)'));
+ if(!values.length)result.push(svg('text',{x:w/2,y:(t+b)/2,'text-anchor':'middle',
+  fill:ink,'font-size':20},'No valid observations for selected datasets'));
+ if(light){
+  // Compact key on the high-resolution white-background PNG export.
+  let keyX=70,keyY=66;
+  for(const id of ids){
+   const label=M.labels[id]||id;
+   const itemWidth=Math.min(265,70+label.length*8);
+   if(keyX+itemWidth>w-30){keyX=70;keyY+=24;}
+   result.push(svg('line',{x1:keyX,y1:keyY-5,x2:keyX+25,y2:keyY-5,
+    stroke:TECH_COLORS[id],'stroke-width':3}));
+   result.push(svg('text',{x:keyX+32,y:keyY,fill:ink,'font-size':14},label));
+   keyX+=itemWidth;
+  }
+ }
+ return {markup:result.join(''),w,h,l,r,n};
 }
-function monthAfter(date){
- const [year,month]=date.split('-').map(Number);
- const next=new Date(Date.UTC(year,month,1));
- return next.toISOString().slice(0,7)+'-01';
-}
-function currentMonthLine(light=false){
- const x=M.dates[st.month]+'-01';
- return {type:'line',xref:'x',yref:'paper',x0:x,x1:x,y0:0,y1:1,
-  line:{color:light?'#ba7e23':'#e8ca7c',dash:'dot',width:1.5}};
-}
-function updatePlotCursor(){
- if(!st.plotReady||!window.Plotly||st.activeTab!=='time')return;
- Plotly.relayout($('plot'),{shapes:[currentMonthLine()]})
-  .catch(err=>console.debug('Plot cursor not updated',err));
-}
-async function drawChart(){
+function drawChart(){
  if(!st.chartOpen||st.activeTab!=='time')return;
- if(!window.Plotly){$('plot').textContent='Plotly is unavailable. Check the vendor/plotly.min.js file.';return;}
- const request=++plotRequest;
- const target=$('plot'),spec=buildPlotSpec();
+ const target=$('plot'),chart=technicalChartSvg();
+ target.setAttribute('viewBox',`0 0 ${chart.w} ${chart.h}`);
+ target.setAttribute('preserveAspectRatio','xMidYMid meet');
+ target.innerHTML=chart.markup;
  $('trendRates').replaceChildren();
  if(st.showTrend){
   for(const id of ORDER.filter(k=>st.series[k])){
-   const fit=linearTrend(activeSeries()?.[id]||[]);if(!fit)continue;
+   const fit=linearTrend(activeSeries()?.[id]||[]);
+   if(!fit)continue;
    const label=document.createElement('span');label.style.color=SERIES_COLORS[id];
-   label.textContent=`${M.labels[id]}: ${fit.slopeCmYear>=0?'+':''}${fit.slopeCmYear.toFixed(3)} cm/yr`;
+   label.textContent=`${M.labels[id]}: ${fit.slopeCmYear>=0?'+':''}${fit.slopeCmYear.toFixed(3)} cm/year`;
    $('trendRates').append(label);
   }
  }
- const config={responsive:true,displaylogo:false,scrollZoom:false,
-  modeBarButtonsToRemove:['lasso2d','select2d','autoScale2d','toggleSpikelines','toImage'],
-  doubleClick:'reset'};
- try{
-  if(!st.plotReady){await Plotly.newPlot(target,spec.traces,spec.layout,config);st.plotReady=true;
-   target.on('plotly_click',event=>{
-    const date=event.points?.[0]?.x;
-    const month=typeof date==='string'?date.slice(0,7):null;
-    const i=M.dates.indexOf(month);if(i>=0)setMonth(i);
-   });
-  }else await Plotly.react(target,spec.traces,spec.layout,config);
-  if(request!==plotRequest)return;
-  Plotly.Plots.resize(target);
- }catch(err){console.error('Plotly rendering error',err);say('Cannot render interactive time series.');}
 }
-
-// Two separate lossless exports. Each captures exactly the active dataset,
-// selected region, visible traces and current monthly spatial field.
-// No network calls, external charting libraries or local HTTP server required.
+// Reposition month cursor without rebuilding source data or requesting a library.
+function updatePlotCursor(){if(st.chartOpen&&st.activeTab==='time')drawChart();}
+function installTechnicalChartClick(){
+ const target=$('plot');
+ target.addEventListener('click',event=>{
+  if(!st.chartOpen||st.activeTab!=='time'||!M.dates.length)return;
+  const point=target.createSVGPoint();point.x=event.clientX;point.y=event.clientY;
+  const ctm=target.getScreenCTM();if(!ctm)return;
+  const loc=point.matrixTransform(ctm.inverse());
+  const l=93,r=1165;
+  if(loc.x<l||loc.x>r)return;
+  const idx=Math.round((loc.x-l)/(r-l)*(M.dates.length-1));
+  if(idx>=0&&idx<M.dates.length)setMonth(idx);
+ });
+}
 function savePng(canvas,filename){
  return new Promise((resolve,reject)=>{
    canvas.toBlob(blob=>{
@@ -1018,29 +1111,22 @@ function makeCanvas(width,height,scale=2){
  ctx.scale(scale,scale);return {c,ctx};
 }
 async function downloadTimePng(){
- if(!window.Plotly){say('Plotly is not loaded.');return;}
- const s=activeSeries(),ids=ORDER.filter(k=>st.series[k]);
- if(!s||!ids.some(k=>(s[k]||[]).some(Number.isFinite))){
+ const data=activeSeries(),ids=ORDER.filter(k=>st.series[k]);
+ if(!data||!ids.some(k=>(data[k]||[]).some(Number.isFinite))){
   say('No time-series observations to export.');return;
  }
- const node=document.createElement('div');
- Object.assign(node.style,{position:'fixed',left:'-20000px',top:'0',width:'1580px',height:'780px'});
- document.body.append(node);
  try{
-  const {traces,layout}=buildPlotSpec(true);
-  layout.width=1580;layout.height=780;layout.autosize=false;
-  layout.margin={l:118,r:35,t:115,b:92};
-  layout.title={text:'GRACE terrestrial water storage anomalies',x:.04,xanchor:'left',font:{size:28}};
-  layout.font={...layout.font,size:20};
-  layout.legend={orientation:'h',x:0,y:1.08,font:{size:19}};
-  layout.xaxis.rangeslider={visible:false};
-  await Plotly.newPlot(node,traces,layout,{displayModeBar:false,staticPlot:true});
-  const url=await Plotly.toImage(node,{format:'png',width:1580,height:780,scale:2});
-  const a=document.createElement('a');a.href=url;
-  a.download=`GRACE_TimeSeries_${filePart(st.region)}_${M.dates[st.month]}.png`;
-  document.body.append(a);a.click();a.remove();
+  const chart=technicalChartSvg(true);
+  const svgText=`<svg xmlns="http://www.w3.org/2000/svg" width="${chart.w}" height="${chart.h}" viewBox="0 0 ${chart.w} ${chart.h}">${chart.markup}</svg>`;
+  const uri='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svgText);
+  const img=new Image();
+  await new Promise((resolve,reject)=>{img.onload=resolve;img.onerror=reject;img.src=uri;});
+  const canvas=document.createElement('canvas');canvas.width=chart.w*2;canvas.height=chart.h*2;
+  const ctx=canvas.getContext('2d');if(!ctx)throw Error('Canvas not available');
+  ctx.fillStyle='#ffffff';ctx.fillRect(0,0,canvas.width,canvas.height);
+  ctx.drawImage(img,0,0,canvas.width,canvas.height);
+  await savePng(canvas,`GRACE_TimeSeries_${filePart(st.region)}_${M.dates[st.month]}.png`);
  }catch(err){console.error(err);say('Time-series PNG download failed.');}
- finally{try{Plotly.purge(node);}catch(_e){}node.remove();}
 }
 
 async function downloadSpatialPng(){
@@ -1181,6 +1267,11 @@ function controls(){
   const value=e.target.value;$('opacity').value=value;$('opacityLabel').textContent=value+'%';
   $('publicOpacityLabel').textContent=value+'%';st.overlay?.setOpacity(Number(value)/100);
  });
+ $('mobileBoundaryClose').addEventListener('click',hideMobileBoundaryCard);
+ $('mobileBoundaryTime').addEventListener('click',event=>{
+  event.preventDefault();event.stopPropagation();
+  const id=st.mobileTapRegion;if(id)openAreaTimeSeries(id);
+ });
  $('publicClose').addEventListener('click',closePublicTimeSeries);
  $('publicBackdrop').addEventListener('click',closePublicTimeSeries);
  $('publicTrend').addEventListener('change',e=>{
@@ -1204,7 +1295,7 @@ function controls(){
  });
  $('layerSelect').add(new Option('No GRACE layer (basemap only)','none'));
  ORDER.forEach(k=>{$('layerSelect').add(new Option(M.labels[k],k));});
- const visibleRegions=M.regions.filter(r=>r.id!=='footprint'&&r.id!=='tonle_sap_basin');
+ const visibleRegions=M.regions.filter(r=>!['footprint','tonle_sap_basin','southeast_asia'].includes(r.id));
  // Group administrative Level-2 units by country. Their geometry and
  // names are extracted from NAME_2 of each supplied *_adm2.shp file.
  const ordinary=visibleRegions.filter(r=>!r.id.startsWith('level2_'));
@@ -1253,7 +1344,7 @@ function controls(){
   $('layerSelect').value=event.target.value;
   $('layerSelect').dispatchEvent(new Event('change'));
  });
- const startRegion=visibleRegions.find(r=>r.id==='southeast_asia')||visibleRegions[0];
+ const startRegion=visibleRegions.find(r=>r.id==='thailand')||visibleRegions[0];
  if(startRegion){st.region=startRegion.id;$('regionSelect').value=st.region;
   if($('spatialRegionSelect'))$('spatialRegionSelect').value=st.region;
   if($('timeRegionSelect'))$('timeRegionSelect').value=st.region;}
@@ -1275,6 +1366,7 @@ function controls(){
    }
    if(ORDER.includes(st.layer))$('spatialLayerSelect').value=st.layer;
    updateLegend();updateAvailability();updateDateSelectors();showOverlay();updateTechnicalMetrics();if(st.chartOpen&&st.activeTab==='spatial')drawRegionalSpatialMap();
+   if(st.mobileTapRegion)showTapBoundaryPopup(st.mobileTapRegion,st.mobileTapLatLng);
  });
  $('regionSelect').addEventListener('change',e=>chooseRegion(e.target.value,true));
  $('basemapSelect').addEventListener('change',e=>chooseBase(e.target.value));
@@ -1298,12 +1390,11 @@ function controls(){
   drawChart();
  }));
 
- // Plotly provides its own high-quality hover and zoom interactions.
- 
- 
+ // Technical SVG chart: click any visible date to move the monthly navigator.
+ installTechnicalChartClick();
  $('aboutButton').addEventListener('click',()=>$('aboutDialog').showModal());
  $('closeAbout').addEventListener('click',()=>$('aboutDialog').close());
- window.addEventListener('resize',()=>{st.map?.invalidateSize();positionMapControls();if(st.publicOpen)renderPublicChart();if(st.plotReady&&st.chartOpen&&st.activeTab==='time')Plotly.Plots.resize($('plot'));});
+ window.addEventListener('resize',()=>{st.map?.invalidateSize();positionMapControls();if(st.publicOpen)renderPublicChart();if(st.chartOpen&&st.activeTab==='time')drawChart();});
  const start=M.dates.indexOf(M.available.tws_m?.[0]);setMonth(start>=0?start:0);updateLegend();
 }
 function updateAvailability(){
@@ -1375,7 +1466,7 @@ function initializeWelcomeGuide(){
  // Deliberately no requestAnimationFrame(openGuide) on initial page load.
 }
 function init(){
- if(!M||!R||!B){document.body.textContent='Generated data not found. Build the website using build_dashboard.py, then open grace_site/index.html.';return;}
+ if(!M||!R){document.body.textContent='Generated data not found. Build the website using build_dashboard.py, then open grace_site/index.html.';return;}
  trimTimelineToObservations();controls();describeStudy();initializeMap();positionMapControls();installDraggableAnalysis();initializeWelcomeGuide();
  if(typeof ResizeObserver!=='undefined')new ResizeObserver(positionMapControls).observe(document.querySelector('.timeline'));
 }
