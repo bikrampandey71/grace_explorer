@@ -1230,3 +1230,135 @@ button:focus-visible,select:focus-visible{outline:3px solid #f6cb71!important;ou
   .welcome-dialog.mobile-guide,
   .welcome-dialog.mobile-guide[open]{top:63px!important;max-height:68dvh!important;}
 }
+
+
+/* ============================================================================
+   MOBILE / TOUCH BOUNDARY ACTION (add-on; no dataset or zoom changes)
+   On mobile: tap an administrative boundary to open a small Leaflet popup.
+   Tap "Time series" in that popup to open the existing public chart.
+   The normal pan/zoom gestures and all desktop click behavior remain unchanged.
+   ============================================================================ */
+.grace-touch-boundary-popup .leaflet-popup-content-wrapper {
+  background:#0e2b44;
+  color:#eff9ff;
+  border:1px solid #8ed4eb;
+  border-radius:13px;
+  box-shadow:0 9px 24px rgba(0,12,26,.42);
+}
+.grace-touch-boundary-popup .leaflet-popup-content {
+  margin:12px 14px 13px;
+  width:auto!important;
+  max-width:min(280px,calc(100vw - 70px));
+}
+.grace-touch-boundary-popup .leaflet-popup-tip {
+  background:#0e2b44;
+}
+.grace-touch-boundary-popup .leaflet-popup-close-button,
+.grace-touch-boundary-popup .leaflet-popup-close-button:hover {
+  color:#f2fbff;
+  font-size:23px;
+  font-weight:600;
+  width:29px;
+  height:29px;
+  line-height:26px;
+}
+.grace-touch-popup {
+  display:flex;
+  flex-direction:column;
+  align-items:stretch;
+  gap:9px;
+  min-width:0;
+  padding-right:10px;
+  font-family:'Segoe UI',Arial,sans-serif;
+}
+.grace-touch-popup-title {
+  display:block;
+  font-size:16px;
+  font-weight:800;
+  line-height:1.35;
+  overflow-wrap:anywhere;
+  padding-right:8px;
+}
+.grace-touch-popup-value {
+  color:#bdd9e9;
+  font-size:12.5px;
+  line-height:1.4;
+}
+.grace-touch-popup-action {
+  width:100%;
+  min-height:45px;
+  border:1px solid #b3edf7;
+  border-radius:9px;
+  background:#1a7e9b;
+  color:#fff;
+  font-size:15px;
+  font-weight:800;
+  padding:9px 14px;
+  touch-action:manipulation;
+}
+.grace-touch-popup-action:hover,
+.grace-touch-popup-action:active {background:#12657f;}
+@media (max-width:390px){
+ .grace-touch-popup-title{font-size:15px;}
+ .grace-touch-popup-action{font-size:14px;}
+}
+
+
+/* ==========================================================================
+   V31 — MOBILE-ONLY: collapsible public dataset panel and faster district map.
+   Desktop selectors, basemap zoom, Time series chart and Technical use unchanged.
+   Edit MOBILE toggle font-size, top and width below.
+   ========================================================================== */
+.quick-mobile-toggle{display:none;} /* Desktop: public choices always visible */
+.quick-layer-content{display:contents;} /* Desktop: retain original panel layout */
+@media(max-width:700px){
+ .quick-layers{
+   /* Overrides older mobile max-height so the CLOSED dropdown stays compact. */
+   left:8px!important;top:167px!important;
+   width:min(290px,calc(100vw - 16px))!important;
+   max-height:none!important;overflow:visible!important;
+   padding:7px!important;z-index:675;
+ }
+ .quick-mobile-toggle{
+   display:flex;align-items:center;justify-content:space-between;gap:10px;
+   width:100%;min-height:58px;padding:8px 11px;
+   text-align:left;color:#effaff;background:#214a64;
+   border:1px solid #7abfda;border-radius:11px;
+   font:800 16px/1.25 'Segoe UI',Arial,sans-serif;
+   cursor:pointer;touch-action:manipulation;
+ }
+ .quick-mobile-title{display:flex;flex-direction:column;gap:3px;min-width:0;}
+ .quick-mobile-title small{
+   font-size:12px;font-weight:550;color:#bedce8;line-height:1.25;
+   overflow-wrap:anywhere;
+ }
+ .quick-mobile-chevron{font-size:24px;flex:none;transition:transform .16s ease;}
+ .quick-layer-content{display:none;}
+ .quick-layers.mobile-open .quick-layer-content{
+   display:block;max-height:min(46dvh,390px);
+   overflow:auto;overscroll-behavior:contain;
+   padding:10px 4px 2px;
+ }
+ .quick-layers.mobile-open .quick-mobile-chevron{transform:rotate(180deg);}
+ .quick-layer-content .quick-caption{display:none!important;}
+ .quick-layers.mobile-open .quick-choice{
+   font-size:14px!important;min-height:49px!important;
+ }
+ .quick-layers.mobile-open .public-opacity-row{font-size:13px!important;}
+ .grace-touch-boundary-popup{z-index:850;}
+ .grace-touch-boundary-popup .grace-touch-popup-action{min-height:48px;}
+ /* Touch viewers do not need decorative hover animation — avoids map repaints. */
+ .grace-region-tip.leaflet-tooltip{animation:none!important;}
+}
+@media(max-width:390px){
+ .quick-layers{top:167px!important;width:min(265px,calc(100vw - 16px))!important;}
+ .quick-mobile-toggle{font-size:15px;min-height:54px;padding:7px 9px;}
+ .quick-mobile-title small{font-size:11px;}
+}
+@media(max-height:610px) and (max-width:700px){
+ .quick-layers{top:165px!important;}
+ .quick-layers.mobile-open .quick-layer-content{max-height:35dvh;}
+}
+@media(prefers-reduced-motion:reduce){
+ .quick-mobile-chevron{transition:none!important;}
+}
