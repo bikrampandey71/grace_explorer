@@ -5,16 +5,16 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>GRACE Explorer</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css?v=55">
   <!-- These are ordinary scripts to allow opening index.html via file:// -->
-  <script src="data/manifest.js"></script>
-  <script src="data/series.js"></script>
+  <script src="data/manifest.js" defer></script>
+  <script src="data/series.js" defer></script>
   <!-- Boundary geometry loads after the main map renders. -->
-  <script src="data/footprint.js"></script>
+  <script src="data/footprint.js" defer></script>
   <script>window.GRACE_CHUNKS={};window.GRACE_FIELDS={};</script>
-  <script src="vendor/pako.min.js"></script>
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script src="app.js" defer></script>
+  <script src="vendor/pako.min.js" defer></script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" defer></script>
+  <script src="app.js?v=55" defer></script>
 </head>
 <body>
   <div id="map" role="application" aria-label="Interactive GRACE data map"></div>
@@ -55,6 +55,21 @@
            aria-label="GRACE overlay opacity">
     </div>
   </nav>
+
+  <section class="explore-mode-panel" id="exploreModePanel" aria-label="Explore water storage geographic selection">
+    <div class="explore-mode-title">Explore geographic level</div>
+    <div class="explore-scope" role="group" aria-label="Choose geographic exploration level">
+      <button id="exploreCountry" class="explore-scope-button quick-choice active" type="button" aria-pressed="true"><span class="scope-name">Country</span></button>
+      <button id="exploreLevel2" class="explore-scope-button quick-choice" type="button" aria-pressed="false"><span class="scope-name">Level-2</span></button>
+    </div>
+    <div class="explore-scope-mobile">
+      <label for="exploreScopeSelect">Explore geographic level</label>
+      <select id="exploreScopeSelect" aria-label="Explore geographic level">
+        <option value="country">Country</option>
+        <option value="level2">Level-2</option>
+      </select>
+    </div>
+  </section>
 
   <aside class="panel technical-panel" id="panel" aria-label="Technical settings">
     <button id="technicalToggle" type="button" class="technical-toggle" aria-expanded="false" aria-controls="technicalContent">
@@ -259,7 +274,7 @@
       <p class="welcome-caution"></p>
     </div>
     <div class="welcome-footer">
-      <span class="welcome-manual-note">The guide opens only when you select <b>? Guide</b>.</span> 
+      <span class="welcome-manual-note">The guide opens only when you select <b>? Guide</b>.</span>
       <button type="button" id="welcomeStart" class="welcome-start">Start exploring</button>
     </div>
   </dialog>
