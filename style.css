@@ -318,7 +318,7 @@ html,body{overflow:hidden;max-width:100%;overscroll-behavior:none}
  .drawer-buttons button{min-width:unset}
 }
 
-/* V13: Classic SVG chart, no Plotly or on-map export button. */
+/* V13: Classic SVG chart and no on-map export button. */
 #plot{display:block;width:100%;height:auto;max-height:min(43dvh,325px);aspect-ratio:1020/440;touch-action:auto;cursor:crosshair}
 .plot-wrap{position:relative;min-height:0}
 .plot-tooltip{position:absolute;min-width:200px;max-width:240px;padding:9px 11px;background:#061727f5;
@@ -679,7 +679,7 @@ button:focus-visible,select:focus-visible{outline:3px solid #f6cb71!important;ou
  .panel.technical-panel.expanded{top:60px;width:calc(100vw - 14px);min-width:0}
 }
 
-/* V19 — smooth responsive navigation, clear map controls and Plotly charts. */
+/* V19 — smooth responsive navigation and clear map controls. */
 :root { --timeline-clearance: 156px; }
 .quick-instruction{display:none!important}
 .quick-layers{width:min(345px,calc(100vw - 36px))}
@@ -705,10 +705,6 @@ button:focus-visible,select:focus-visible{outline:3px solid #f6cb71!important;ou
  min-height:300px!important;max-height:none!important;aspect-ratio:auto!important;
  touch-action:auto!important;overflow:visible!important;background:#0b263e;
 }
-#plot .modebar{top:8px!important;right:10px!important}
-#plot .modebar-btn{filter:brightness(1.15)}
-#plot .svg-container{width:100%!important}
-#plot .plotly .main-svg{border-radius:8px}
 #regionSpatialCanvas{image-rendering:crisp-edges;max-height:60dvh!important}
 #spatialTabPanel .region-spatial{padding:12px;min-width:0}
 @media(max-width:900px){
@@ -1361,4 +1357,56 @@ button:focus-visible,select:focus-visible{outline:3px solid #f6cb71!important;ou
 }
 @media(prefers-reduced-motion:reduce){
  .quick-mobile-chevron{transition:none!important;}
+}
+
+
+/* V33: Native SVG Technical time-series, no external plotting library */
+#plot{display:block!important;width:100%!important;height:auto!important;min-height:0!important;
+ max-height:none!important;aspect-ratio:1200/490!important;overflow:visible!important;
+ background:#102b43!important;touch-action:manipulation!important;cursor:crosshair;}
+#plotWrap{max-width:100%;overflow:hidden;}
+/* Reliable mobile touch card: interactive even if vector canvas redraws */
+.mobile-boundary-card{position:fixed;z-index:960;box-sizing:border-box;
+ width:min(278px,calc(100vw - 20px));padding:13px 14px 14px;
+ color:#f5fbff;background:#0d2942;border:1px solid #8bddec;border-radius:12px;
+ box-shadow:0 8px 27px #0008;pointer-events:auto;}
+.mobile-boundary-card[hidden]{display:none!important;}
+.mobile-boundary-card strong{display:block;max-width:100%;font-size:14px;line-height:1.35;
+ padding-right:23px;overflow-wrap:anywhere;}
+.mobile-boundary-value{font-size:12px;line-height:1.35;color:#c9e5f2;margin:7px 0 10px;}
+.mobile-boundary-close{position:absolute;top:5px;right:6px;border:0;background:transparent;
+ color:#fff;font-size:23px;width:31px;height:30px;}
+.mobile-boundary-time{display:block;width:100%;background:#197f9b;border:1px solid #a2e8f7;
+ color:white;padding:8px 10px;min-height:43px;border-radius:8px;font-size:14px;
+ font-weight:750;touch-action:manipulation;}
+@media(min-width:701px) and (hover:hover) and (pointer:fine){.mobile-boundary-card{display:none!important;}}
+/* Only mobile font sizes reduced: desktop typography remains exactly as before. */
+@media(max-width:700px){
+ .quick-mobile-toggle{font-size:13px!important;min-height:49px!important;}
+ .quick-mobile-title small{font-size:10px!important;}
+ .quick-mobile-chevron{font-size:19px!important;}
+ .quick-layers.mobile-open .quick-choice{font-size:12px!important;min-height:44px!important;}
+ .quick-layers.mobile-open .public-opacity-row{font-size:11px!important;}
+ .quick-caption{font-size:13px!important;}
+ .technical-toggle{font-size:13px!important;}
+ .technical-content,.technical-panel label,.technical-panel select{font-size:12px!important;}
+ .timeline #dateLabel{font-size:14px!important;}
+ .timeline .selectors label{font-size:11px!important;}
+ .timeline .selectors select{font-size:12px!important;}
+ .timeline .subtle{font-size:10px!important;}
+ .pager button{font-size:17px!important;}
+ .public-time-header h2{font-size:18px!important;}
+ .public-time-header p{font-size:11px!important;}
+ .public-series-legend .public-legend-button{font-size:10.5px!important;}
+ .public-trend-control{font-size:12px!important;}
+ .public-plot-note,.trend-value-chip{font-size:10.5px!important;}
+ .drawer-heading h2{font-size:19px!important;}
+ .drawer .analysis-tab{font-size:14px!important;}
+ .drawer .analysis-pickers label,.drawer .series-toggles label{font-size:11px!important;}
+ .drawer .analysis-pickers select,.drawer .drawer-buttons button{font-size:11px!important;}
+ .metrics-modal h2{font-size:19px!important;}
+ .metrics-modal .metric-selectors label,.metrics-modal .metric-note{font-size:12px!important;}
+ .welcome-dialog.mobile-guide .welcome-header h2{font-size:19px!important;}
+ .welcome-dialog.mobile-guide .welcome-steps p{font-size:12px!important;}
+ .cursor-coordinates{font-size:11px!important;}
 }
