@@ -1449,3 +1449,22 @@ button:focus-visible,select:focus-visible{outline:3px solid #f6cb71!important;ou
 @media(prefers-reduced-motion:reduce){
  .grace-boundary-fade,.boundary-choice{transition:none!important}
 }
+
+/* Requested public-interface refinements: original palette and map zoom animation unchanged. */
+.gravimetry-brand .welcome-guide-trigger{width:38px!important;height:38px!important;min-width:38px!important;min-height:38px!important;padding:0!important;border-radius:50%!important;display:inline-flex;align-items:center;justify-content:center;font-size:22px!important;font-weight:800;line-height:1}
+@media(min-width:720px){
+ .public-time-header{cursor:grab;touch-action:none;user-select:none}
+ .public-time-header:active{cursor:grabbing}
+ .public-time-header button{cursor:pointer;touch-action:auto}
+ .public-time-dialog.public-time-dragged{top:var(--public-y)!important;left:var(--public-x)!important;transform:none!important}
+}
+
+/* Movable desktop public settings panel; drag only the heading, not the controls. */
+@media (min-width:701px){
+ .quick-layers .quick-caption{cursor:grab;touch-action:none;user-select:none;}
+ .quick-layers .quick-caption:active{cursor:grabbing;}
+ .quick-layers.quick-layers-dragged{
+  top:var(--quick-y)!important;left:var(--quick-x)!important;
+  right:auto!important;bottom:auto!important;
+ }
+}
