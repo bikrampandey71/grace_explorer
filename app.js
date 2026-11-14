@@ -6,6 +6,12 @@
 'use strict';
 const $=id=>document.getElementById(id);
 const M=window.GRACE_MANIFEST, R=window.GRACE_REGION_SERIES;
+// Consistent presentation labels across public charts, legends, selectors and exports.
+if(M?.labels){
+ M.labels.tws_m='Downscaled GRACE (5 km)';
+ M.labels.obs_m='Interpolated GRACE (5 km)';
+}
+
 // Boundaries are loaded after the first map frame so heavy Level-2 JSON does not block the initial map.
 let B=window.GRACE_BOUNDARIES||null;
 const MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
@@ -729,6 +735,16 @@ function initializeMap(){
  // V17's default Leaflet zoom control appears at the top left.
  // Keep scale bottom right so the V23 lower-left coordinates stay legible.
  L.control.scale({metric:true,imperial:false,position:'bottomright'}).addTo(map);
+ // Keep the original Leaflet zoom animation, but make minus exactly one level.
+ map.whenReady(()=>{
+  const zoomOut=map.zoomControl?._zoomOutButton;
+  if(!zoomOut)return;
+  L.DomEvent.off(zoomOut,'click',map.zoomControl._zoomOut,map.zoomControl);
+  L.DomEvent.on(zoomOut,'click',event=>{
+   L.DomEvent.stop(event);
+   if(!map._zoomAnimating)map.setZoom(Math.max(map.getMinZoom(),map.getZoom()-1),{animate:true});
+  });
+ });
  const extent=M.bounds.tws_m;
  map.fitBounds([[extent[0],extent[1]],[extent[2],extent[3]]],{padding:[20,20],maxZoom:6});
  const overviewZoom=map.getZoom();
@@ -736,8 +752,9 @@ function initializeMap(){
  // floating-point rounding and the existing 0.25 zoom snap without changing zoom animation.
  LEVEL2_SELECTION_ZOOM=overviewZoom+(map.options.zoomDelta||1)-0.001;
  level2WasActive=false;
- // Do not allow zooming out beyond the initial Southeast Asia overview.
- map.setMinZoom(map.getZoom());
+ // Permit one additional full zoom-out step beyond the initial Southeast Asia overview.
+ // Keep the original zoom controls, quarter-step snapping and animation unchanged.
+ map.setMinZoom(Math.max(compact?2.5:3,overviewZoom-1));
  // Switch highlight/selection priority on every completed zoom step.
  // Bind before the asynchronous Level-2 feature loader, so the large layer
  // is always restored even when district scripts have not finished loading.
@@ -1235,9 +1252,36 @@ function linearTrend(values){
 const PUBLIC_P={w:1120,h:455,l:88,r:1080,t:47,b:359};
 const PUBLIC_MOBILE_P={w:560,h:445,l:67,r:535,t:40,b:345};
 function publicPlotGeometry(){return window.innerWidth<=640?PUBLIC_MOBILE_P:PUBLIC_P;}
+function publicHasObservations(id){
+ const values=R?.[st.region]?.[id];
+ return Array.isArray(values)&&values.some(Number.isFinite);
+}
+function installDraggablePublicTimeSeries(){
+ const dialog=$('publicTimeDialog'),bar=dialog?.querySelector('.public-time-header');
+ if(!dialog||!bar)return;
+ let drag=null;
+ bar.addEventListener('pointerdown',event=>{
+  if(!st.publicOpen||event.button!==0||window.innerWidth<720||event.target.closest('button,a,input,select'))return;
+  const rect=dialog.getBoundingClientRect();
+  dialog.classList.add('public-time-dragged');
+  dialog.style.setProperty('--public-x',rect.left+'px');
+  dialog.style.setProperty('--public-y',rect.top+'px');
+  drag={id:event.pointerId,x:event.clientX,y:event.clientY,left:rect.left,top:rect.top};
+  bar.setPointerCapture(event.pointerId);event.preventDefault();
+ });
+ bar.addEventListener('pointermove',event=>{
+  if(!drag||drag.id!==event.pointerId)return;
+  const x=Math.max(4,Math.min(window.innerWidth-dialog.offsetWidth-4,drag.left+event.clientX-drag.x));
+  const y=Math.max(4,Math.min(window.innerHeight-55,drag.top+event.clientY-drag.y));
+  dialog.style.setProperty('--public-x',x+'px');dialog.style.setProperty('--public-y',y+'px');
+ });
+ for(const kind of ['pointerup','pointercancel','lostpointercapture'])bar.addEventListener(kind,()=>{drag=null;});
+}
 function openPublicTimeSeries(){
  st.publicOpen=true;document.body.classList.add('public-analysis-open');
- st.publicSeries=Object.fromEntries(ORDER.map(id=>[id,true]));
+ const dialog=$('publicTimeDialog');dialog.classList.remove('public-time-dragged');
+ dialog.style.removeProperty('--public-x');dialog.style.removeProperty('--public-y');
+ st.publicSeries=Object.fromEntries(ORDER.map(id=>[id,publicHasObservations(id)]));
  st.publicTrend=true;
  $('publicTrend').checked=true;
  $('publicBackdrop').hidden=false;$('publicTimeDialog').hidden=false;
@@ -1259,6 +1303,7 @@ function closePublicTimeSeries(){
 function renderPublicLegend(){
  const wrap=$('publicLegend');wrap.replaceChildren();
  for(const id of ORDER){
+  if(!publicHasObservations(id))continue;
   const button=document.createElement('button');button.type='button';
   button.className='public-legend-button';button.dataset.layer=id;
   button.setAttribute('aria-pressed',String(st.publicSeries[id]));
@@ -1277,7 +1322,7 @@ function renderPublicChart(){
  const p=publicPlotGeometry(),n=M.dates.length;
  plot.setAttribute('viewBox',`0 0 ${p.w} ${p.h}`);
  if(!data){plot.innerHTML=`<text x="${p.w/2}" y="${p.h/2}" text-anchor="middle" fill="white" font-size="22">No regional series available</text>`;return;}
- const ids=ORDER.filter(k=>st.publicSeries[k]);
+ const ids=ORDER.filter(k=>st.publicSeries[k]&&publicHasObservations(k));
  const values=ids.flatMap(k=>(data[k]||[]).filter(Number.isFinite));
  let low=Math.min(0,...values),high=Math.max(0,...values);
  if(!values.length){low=-10;high=10;}
@@ -1573,6 +1618,45 @@ function updateTechnicalMetrics(){
    `${v.n} common observed months. NSE uses Dataset B as reference. Baseline differences affect NSE/RMSE; product agreement is not absolute accuracy.`;
 }
 
+// Drag the public dataset settings panel using its heading on desktop.
+// The original Leaflet zoom and dataset button interactions are unchanged.
+function installDraggableQuickLayers(){
+ const panel=document.querySelector('.quick-layers');
+ const handle=panel?.querySelector('.quick-caption');
+ if(!panel||!handle)return;
+ let drag=null;
+ const clamp=(v,min,max)=>Math.max(min,Math.min(Math.max(min,max),v));
+ handle.setAttribute('title','Drag to move the settings panel');
+ handle.addEventListener('pointerdown',event=>{
+  if(event.button!==0||window.innerWidth<=700)return;
+  const rect=panel.getBoundingClientRect();
+  panel.classList.add('quick-layers-dragged');
+  panel.style.setProperty('--quick-x',rect.left+'px');
+  panel.style.setProperty('--quick-y',rect.top+'px');
+  drag={id:event.pointerId,x:event.clientX,y:event.clientY,left:rect.left,top:rect.top};
+  handle.setPointerCapture(event.pointerId);
+  event.preventDefault();
+ });
+ handle.addEventListener('pointermove',event=>{
+  if(!drag||event.pointerId!==drag.id)return;
+  const x=clamp(drag.left+event.clientX-drag.x,4,window.innerWidth-panel.offsetWidth-4);
+  const y=clamp(drag.top+event.clientY-drag.y,4,window.innerHeight-panel.offsetHeight-4);
+  panel.style.setProperty('--quick-x',x+'px');
+  panel.style.setProperty('--quick-y',y+'px');
+ });
+ const finish=()=>{drag=null;};
+ for(const type of ['pointerup','pointercancel','lostpointercapture'])handle.addEventListener(type,finish);
+ window.addEventListener('resize',()=>{
+  if(window.innerWidth<=700){
+   finish();panel.classList.remove('quick-layers-dragged');
+   panel.style.removeProperty('--quick-x');panel.style.removeProperty('--quick-y');
+  }else if(panel.classList.contains('quick-layers-dragged')){
+   const rect=panel.getBoundingClientRect();
+   panel.style.setProperty('--quick-x',clamp(rect.left,4,window.innerWidth-panel.offsetWidth-4)+'px');
+   panel.style.setProperty('--quick-y',clamp(rect.top,4,window.innerHeight-panel.offsetHeight-4)+'px');
+  }
+ });
+}
 function controls(){
  // Simple interface for all visitors; technical settings remain collapsed.
  // Phone-only collapsible datasets: reduce map obstruction and accidental lag.
@@ -1590,7 +1674,7 @@ function controls(){
  }
  function updateQuickLabel(){
   if(quickCurrent)quickCurrent.textContent=
-   ({tws_m:'Downscaled GRACE (5 km, SEA)',obs_m:'Interpolated GRACE (5 km, SEA)',
+   ({tws_m:'Downscaled GRACE (5 km)',obs_m:'Interpolated GRACE (5 km)',
      tws_m_1km:'Downscaled GRACE (1 km, Thailand)'})[st.layer] || 'Other GRACE dataset';
  }
  quickToggle?.addEventListener('click',()=>setQuickOpen(quickToggle.getAttribute('aria-expanded')!=='true'));
@@ -1853,7 +1937,7 @@ function initializeWelcomeGuide(){
 }
 function init(){
  if(!M||!R){document.body.textContent='Generated data not found. Build the website using build_dashboard.py, then open grace_site/index.html.';return;}
- trimTimelineToObservations();controls();describeStudy();initializeMap();positionMapControls();installDraggableAnalysis();initializeWelcomeGuide();
+ trimTimelineToObservations();controls();describeStudy();initializeMap();positionMapControls();installDraggableAnalysis();installDraggablePublicTimeSeries();installDraggableQuickLayers();initializeWelcomeGuide();
  if(typeof ResizeObserver!=='undefined')new ResizeObserver(positionMapControls).observe(document.querySelector('.timeline'));
 }
 window.addEventListener('DOMContentLoaded',init);
