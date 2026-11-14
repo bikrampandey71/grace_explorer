@@ -318,7 +318,7 @@ html,body{overflow:hidden;max-width:100%;overscroll-behavior:none}
  .drawer-buttons button{min-width:unset}
 }
 
-/* V13: Classic SVG chart, no Plotly or on-map export button. */
+/* V13: Classic SVG chart and no on-map export button. */
 #plot{display:block;width:100%;height:auto;max-height:min(43dvh,325px);aspect-ratio:1020/440;touch-action:auto;cursor:crosshair}
 .plot-wrap{position:relative;min-height:0}
 .plot-tooltip{position:absolute;min-width:200px;max-width:240px;padding:9px 11px;background:#061727f5;
@@ -679,7 +679,7 @@ button:focus-visible,select:focus-visible{outline:3px solid #f6cb71!important;ou
  .panel.technical-panel.expanded{top:60px;width:calc(100vw - 14px);min-width:0}
 }
 
-/* V19 — smooth responsive navigation, clear map controls and Plotly charts. */
+/* V19 — smooth responsive navigation and clear map controls. */
 :root { --timeline-clearance: 156px; }
 .quick-instruction{display:none!important}
 .quick-layers{width:min(345px,calc(100vw - 36px))}
@@ -705,10 +705,6 @@ button:focus-visible,select:focus-visible{outline:3px solid #f6cb71!important;ou
  min-height:300px!important;max-height:none!important;aspect-ratio:auto!important;
  touch-action:auto!important;overflow:visible!important;background:#0b263e;
 }
-#plot .modebar{top:8px!important;right:10px!important}
-#plot .modebar-btn{filter:brightness(1.15)}
-#plot .svg-container{width:100%!important}
-#plot .plotly .main-svg{border-radius:8px}
 #regionSpatialCanvas{image-rendering:crisp-edges;max-height:60dvh!important}
 #spatialTabPanel .region-spatial{padding:12px;min-width:0}
 @media(max-width:900px){
@@ -1230,3 +1226,249 @@ button:focus-visible,select:focus-visible{outline:3px solid #f6cb71!important;ou
   .welcome-dialog.mobile-guide,
   .welcome-dialog.mobile-guide[open]{top:63px!important;max-height:68dvh!important;}
 }
+
+
+/* ============================================================================
+   MOBILE / TOUCH BOUNDARY ACTION (add-on; no dataset or zoom changes)
+   On mobile: tap an administrative boundary to open a small Leaflet popup.
+   Tap "Time series" in that popup to open the existing public chart.
+   The normal pan/zoom gestures and all desktop click behavior remain unchanged.
+   ============================================================================ */
+.grace-touch-boundary-popup .leaflet-popup-content-wrapper {
+  background:#0e2b44;
+  color:#eff9ff;
+  border:1px solid #8ed4eb;
+  border-radius:13px;
+  box-shadow:0 9px 24px rgba(0,12,26,.42);
+}
+.grace-touch-boundary-popup .leaflet-popup-content {
+  margin:12px 14px 13px;
+  width:auto!important;
+  max-width:min(280px,calc(100vw - 70px));
+}
+.grace-touch-boundary-popup .leaflet-popup-tip {
+  background:#0e2b44;
+}
+.grace-touch-boundary-popup .leaflet-popup-close-button,
+.grace-touch-boundary-popup .leaflet-popup-close-button:hover {
+  color:#f2fbff;
+  font-size:23px;
+  font-weight:600;
+  width:29px;
+  height:29px;
+  line-height:26px;
+}
+.grace-touch-popup {
+  display:flex;
+  flex-direction:column;
+  align-items:stretch;
+  gap:9px;
+  min-width:0;
+  padding-right:10px;
+  font-family:'Segoe UI',Arial,sans-serif;
+}
+.grace-touch-popup-title {
+  display:block;
+  font-size:16px;
+  font-weight:800;
+  line-height:1.35;
+  overflow-wrap:anywhere;
+  padding-right:8px;
+}
+.grace-touch-popup-value {
+  color:#bdd9e9;
+  font-size:12.5px;
+  line-height:1.4;
+}
+.grace-touch-popup-action {
+  width:100%;
+  min-height:45px;
+  border:1px solid #b3edf7;
+  border-radius:9px;
+  background:#1a7e9b;
+  color:#fff;
+  font-size:15px;
+  font-weight:800;
+  padding:9px 14px;
+  touch-action:manipulation;
+}
+.grace-touch-popup-action:hover,
+.grace-touch-popup-action:active {background:#12657f;}
+@media (max-width:390px){
+ .grace-touch-popup-title{font-size:15px;}
+ .grace-touch-popup-action{font-size:14px;}
+}
+
+
+/* ==========================================================================
+   V31 — MOBILE-ONLY: collapsible public dataset panel and faster district map.
+   Desktop selectors, basemap zoom, Time series chart and Technical use unchanged.
+   Edit MOBILE toggle font-size, top and width below.
+   ========================================================================== */
+.quick-mobile-toggle{display:none;} /* Desktop: public choices always visible */
+.quick-layer-content{display:contents;} /* Desktop: retain original panel layout */
+@media(max-width:700px){
+ .quick-layers{
+   /* Overrides older mobile max-height so the CLOSED dropdown stays compact. */
+   left:8px!important;top:167px!important;
+   width:min(290px,calc(100vw - 16px))!important;
+   max-height:none!important;overflow:visible!important;
+   padding:7px!important;z-index:675;
+ }
+ .quick-mobile-toggle{
+   display:flex;align-items:center;justify-content:space-between;gap:10px;
+   width:100%;min-height:58px;padding:8px 11px;
+   text-align:left;color:#effaff;background:#214a64;
+   border:1px solid #7abfda;border-radius:11px;
+   font:800 16px/1.25 'Segoe UI',Arial,sans-serif;
+   cursor:pointer;touch-action:manipulation;
+ }
+ .quick-mobile-title{display:flex;flex-direction:column;gap:3px;min-width:0;}
+ .quick-mobile-title small{
+   font-size:12px;font-weight:550;color:#bedce8;line-height:1.25;
+   overflow-wrap:anywhere;
+ }
+ .quick-mobile-chevron{font-size:24px;flex:none;transition:transform .16s ease;}
+ .quick-layer-content{display:none;}
+ .quick-layers.mobile-open .quick-layer-content{
+   display:block;max-height:min(46dvh,390px);
+   overflow:auto;overscroll-behavior:contain;
+   padding:10px 4px 2px;
+ }
+ .quick-layers.mobile-open .quick-mobile-chevron{transform:rotate(180deg);}
+ .quick-layer-content .quick-caption{display:none!important;}
+ .quick-layers.mobile-open .quick-choice{
+   font-size:14px!important;min-height:49px!important;
+ }
+ .quick-layers.mobile-open .public-opacity-row{font-size:13px!important;}
+ .grace-touch-boundary-popup{z-index:850;}
+ .grace-touch-boundary-popup .grace-touch-popup-action{min-height:48px;}
+ /* Touch viewers do not need decorative hover animation — avoids map repaints. */
+ .grace-region-tip.leaflet-tooltip{animation:none!important;}
+}
+@media(max-width:390px){
+ .quick-layers{top:167px!important;width:min(265px,calc(100vw - 16px))!important;}
+ .quick-mobile-toggle{font-size:15px;min-height:54px;padding:7px 9px;}
+ .quick-mobile-title small{font-size:11px;}
+}
+@media(max-height:610px) and (max-width:700px){
+ .quick-layers{top:165px!important;}
+ .quick-layers.mobile-open .quick-layer-content{max-height:35dvh;}
+}
+@media(prefers-reduced-motion:reduce){
+ .quick-mobile-chevron{transition:none!important;}
+}
+
+
+/* V33: Native SVG Technical time-series, no external plotting library */
+#plot{display:block!important;width:100%!important;height:auto!important;min-height:0!important;
+ max-height:none!important;aspect-ratio:1200/490!important;overflow:visible!important;
+ background:#102b43!important;touch-action:manipulation!important;cursor:crosshair;}
+#plotWrap{max-width:100%;overflow:hidden;}
+/* Reliable mobile touch card: interactive even if vector canvas redraws */
+.mobile-boundary-card{position:fixed;z-index:960;box-sizing:border-box;
+ width:min(278px,calc(100vw - 20px));padding:13px 14px 14px;
+ color:#f5fbff;background:#0d2942;border:1px solid #8bddec;border-radius:12px;
+ box-shadow:0 8px 27px #0008;pointer-events:auto;}
+.mobile-boundary-card[hidden]{display:none!important;}
+.mobile-boundary-card strong{display:block;max-width:100%;font-size:14px;line-height:1.35;
+ padding-right:23px;overflow-wrap:anywhere;}
+.mobile-boundary-value{font-size:12px;line-height:1.35;color:#c9e5f2;margin:7px 0 10px;}
+.mobile-boundary-close{position:absolute;top:5px;right:6px;border:0;background:transparent;
+ color:#fff;font-size:23px;width:31px;height:30px;}
+.mobile-boundary-time{display:block;width:100%;background:#197f9b;border:1px solid #a2e8f7;
+ color:white;padding:8px 10px;min-height:43px;border-radius:8px;font-size:14px;
+ font-weight:750;touch-action:manipulation;}
+@media(min-width:701px) and (hover:hover) and (pointer:fine){.mobile-boundary-card{display:none!important;}}
+/* Only mobile font sizes reduced: desktop typography remains exactly as before. */
+@media(max-width:700px){
+ .quick-mobile-toggle{font-size:13px!important;min-height:49px!important;}
+ .quick-mobile-title small{font-size:10px!important;}
+ .quick-mobile-chevron{font-size:19px!important;}
+ .quick-layers.mobile-open .quick-choice{font-size:12px!important;min-height:44px!important;}
+ .quick-layers.mobile-open .public-opacity-row{font-size:11px!important;}
+ .quick-caption{font-size:13px!important;}
+ .technical-toggle{font-size:13px!important;}
+ .technical-content,.technical-panel label,.technical-panel select{font-size:12px!important;}
+ .timeline #dateLabel{font-size:14px!important;}
+ .timeline .selectors label{font-size:11px!important;}
+ .timeline .selectors select{font-size:12px!important;}
+ .timeline .subtle{font-size:10px!important;}
+ .pager button{font-size:17px!important;}
+ .public-time-header h2{font-size:18px!important;}
+ .public-time-header p{font-size:11px!important;}
+ .public-series-legend .public-legend-button{font-size:10.5px!important;}
+ .public-trend-control{font-size:12px!important;}
+ .public-plot-note,.trend-value-chip{font-size:10.5px!important;}
+ .drawer-heading h2{font-size:19px!important;}
+ .drawer .analysis-tab{font-size:14px!important;}
+ .drawer .analysis-pickers label,.drawer .series-toggles label{font-size:11px!important;}
+ .drawer .analysis-pickers select,.drawer .drawer-buttons button{font-size:11px!important;}
+ .metrics-modal h2{font-size:19px!important;}
+ .metrics-modal .metric-selectors label,.metrics-modal .metric-note{font-size:12px!important;}
+ .welcome-dialog.mobile-guide .welcome-header h2{font-size:19px!important;}
+ .welcome-dialog.mobile-guide .welcome-steps p{font-size:12px!important;}
+ .cursor-coordinates{font-size:11px!important;}
+}
+
+
+/* ============================================================================
+   V40 — COUNTRY / LEVEL-2 BOUNDARY BUTTONS  (EDIT HERE)
+   Buttons sit at the bottom of the "Explore water storage" box.
+   Boundary colours are set in app.js → boundaryStyle():
+     country '#000000' (black), Level-2 '#ff73ff' (light magenta).
+   Fade speed: .grace-boundary-fade transition (and the 520 ms purge timer in app.js; keep it just under the CSS time).
+   ============================================================================ */
+.boundary-mode{margin-top:12px;padding-top:11px;border-top:1px solid rgba(147,191,209,.35)}
+.boundary-mode-caption{font-weight:800;letter-spacing:.025em;color:#b5edf7;font-size:14px;margin:0 0 8px}
+.boundary-mode-buttons{display:flex;gap:8px}
+.boundary-choice{
+ flex:1 1 0;display:flex;align-items:center;justify-content:center;gap:9px;
+ min-height:44px;padding:8px 10px;background:#24415a;color:#fff;
+ border:2px solid #587d98;border-radius:12px;font-size:14.5px;font-weight:760;line-height:1.2;
+ transition:background .22s ease,border-color .22s ease,box-shadow .22s ease,transform .12s ease;
+}
+.boundary-choice:hover{background:#32627b}
+.boundary-choice:active{transform:scale(.97)}
+.boundary-choice.active,.boundary-choice[aria-pressed="true"]{
+ border-color:#8adff7;background:#1b6279;box-shadow:inset 0 0 0 1px #a8e8f5}
+.boundary-swatch{display:inline-block;width:22px;height:5px;border-radius:3px;flex:none;
+ box-shadow:0 0 0 1.5px rgba(255,255,255,.9)}
+.swatch-country{background:#000}
+.swatch-level2{background:linear-gradient(90deg,#000 0 50%,#ff73ff 50% 100%)}
+.boundary-status{display:none;margin:7px 2px 0;font-size:12.5px;color:#cfe8f2}
+.boundary-status.show{display:block}
+/* Smooth boundary fades: the whole Canvas layer fades (GPU composited). */
+.grace-boundary-fade{transition:opacity .5s cubic-bezier(.4,0,.2,1);will-change:opacity}
+@media(max-width:700px){
+ .boundary-mode{margin-top:8px;padding-top:8px}
+ .boundary-mode-caption{font-size:12px;margin-bottom:6px}
+ .boundary-choice{min-height:42px;font-size:13px;padding:6px 6px;gap:6px}
+ .boundary-swatch{width:16px}
+}
+@media(prefers-reduced-motion:reduce){
+ .grace-boundary-fade,.boundary-choice{transition:none!important}
+}
+
+/* Requested public-interface refinements: original palette and map zoom animation unchanged. */
+.gravimetry-brand .welcome-guide-trigger{width:38px!important;height:38px!important;min-width:38px!important;min-height:38px!important;padding:0!important;border-radius:50%!important;display:inline-flex;align-items:center;justify-content:center;font-size:22px!important;font-weight:800;line-height:1}
+@media(min-width:720px){
+ .public-time-header{cursor:grab;touch-action:none;user-select:none}
+ .public-time-header:active{cursor:grabbing}
+ .public-time-header button{cursor:pointer;touch-action:auto}
+ .public-time-dialog.public-time-dragged{top:var(--public-y)!important;left:var(--public-x)!important;transform:none!important}
+}
+
+/* Movable desktop public settings panel; drag only the heading, not the controls. */
+@media (min-width:701px){
+ .quick-layers .quick-caption{cursor:grab;touch-action:none;user-select:none;}
+ .quick-layers .quick-caption:active{cursor:grabbing;}
+ .quick-layers.quick-layers-dragged{
+  top:var(--quick-y)!important;left:var(--quick-x)!important;
+  right:auto!important;bottom:auto!important;
+ }
+}
+
+/* Transparent GRAVIMETRY logo: remove the white header card, preserve guide control. */
+.gravimetry-brand{background:transparent!important;border-color:transparent!important;box-shadow:none!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important;}
+.gravimetry-logo{background:transparent!important;box-shadow:none!important;}
