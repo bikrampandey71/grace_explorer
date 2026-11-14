@@ -1411,136 +1411,41 @@ button:focus-visible,select:focus-visible{outline:3px solid #f6cb71!important;ou
  .cursor-coordinates{font-size:11px!important;}
 }
 
-/* V41: explicit geographic exploration selector, independent of dataset choice. */
-.explore-scope{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:0 0 14px}
-.explore-scope-button{min-height:40px;padding:8px 6px;border:1px solid #7299ae;border-radius:9px;background:#24415a;color:#f4fbff;font:700 14px/1.2 inherit;cursor:pointer}
-.explore-scope-button.active,.explore-scope-button[aria-pressed="true"]{background:#1b6279;border-color:#8adff7;box-shadow:inset 0 0 0 1px #a8e8f5}
-.explore-scope-button:hover{background:#32627b}
 
-/* V42: compact geographic scope controls; desktop stacked, mobile dropdown. */
-.explore-scope{display:flex!important;flex-direction:column!important;gap:5px!important;margin:0 0 9px!important;}
-.explore-scope-button{width:100%;min-height:32px!important;padding:6px 9px!important;font-family:inherit!important;font-size:12px!important;line-height:1.2!important;text-align:left;}
-.explore-scope-mobile{display:none;}
-.quick-layers .quick-caption{font-size:12px!important;}
-.quick-layers .quick-choice{font-size:12px!important;}
-.quick-layers .public-opacity-row{font-size:11px!important;}
+/* ============================================================================
+   V40 — COUNTRY / LEVEL-2 BOUNDARY BUTTONS  (EDIT HERE)
+   Buttons sit at the bottom of the "Explore water storage" box.
+   Boundary colours are set in app.js → boundaryStyle():
+     country '#000000' (black), Level-2 '#ff73ff' (light magenta).
+   Fade speed: .grace-boundary-fade transition (and the 520 ms purge timer in app.js; keep it just under the CSS time).
+   ============================================================================ */
+.boundary-mode{margin-top:12px;padding-top:11px;border-top:1px solid rgba(147,191,209,.35)}
+.boundary-mode-caption{font-weight:800;letter-spacing:.025em;color:#b5edf7;font-size:14px;margin:0 0 8px}
+.boundary-mode-buttons{display:flex;gap:8px}
+.boundary-choice{
+ flex:1 1 0;display:flex;align-items:center;justify-content:center;gap:9px;
+ min-height:44px;padding:8px 10px;background:#24415a;color:#fff;
+ border:2px solid #587d98;border-radius:12px;font-size:14.5px;font-weight:760;line-height:1.2;
+ transition:background .22s ease,border-color .22s ease,box-shadow .22s ease,transform .12s ease;
+}
+.boundary-choice:hover{background:#32627b}
+.boundary-choice:active{transform:scale(.97)}
+.boundary-choice.active,.boundary-choice[aria-pressed="true"]{
+ border-color:#8adff7;background:#1b6279;box-shadow:inset 0 0 0 1px #a8e8f5}
+.boundary-swatch{display:inline-block;width:22px;height:5px;border-radius:3px;flex:none;
+ box-shadow:0 0 0 1.5px rgba(255,255,255,.9)}
+.swatch-country{background:#000}
+.swatch-level2{background:linear-gradient(90deg,#000 0 50%,#ff73ff 50% 100%)}
+.boundary-status{display:none;margin:7px 2px 0;font-size:12.5px;color:#cfe8f2}
+.boundary-status.show{display:block}
+/* Smooth boundary fades: the whole Canvas layer fades (GPU composited). */
+.grace-boundary-fade{transition:opacity .5s cubic-bezier(.4,0,.2,1);will-change:opacity}
 @media(max-width:700px){
- .explore-scope{display:none!important;}
- .explore-scope-mobile{display:flex;flex-direction:column;gap:5px;margin:0 0 10px;}
- .explore-scope-mobile label{font:600 11px/1.25 'Segoe UI',Arial,sans-serif;color:#d8eaf3;}
- .explore-scope-mobile select{width:100%;min-height:36px;border:1px solid #7299ae;border-radius:8px;background:#24415a;color:#f4fbff;padding:6px 9px;font:600 12px/1.3 'Segoe UI',Arial,sans-serif;}
- .quick-layers.mobile-open .quick-choice{font-size:12px!important;min-height:39px!important;}
- .quick-mobile-toggle{font-size:12px!important;min-height:44px!important;}
- .quick-mobile-title small{font-size:10px!important;}
+ .boundary-mode{margin-top:8px;padding-top:8px}
+ .boundary-mode-caption{font-size:12px;margin-bottom:6px}
+ .boundary-choice{min-height:42px;font-size:13px;padding:6px 6px;gap:6px}
+ .boundary-swatch{width:16px}
 }
-
-/* V43: separate floating geographic-selection window immediately below datasets. */
-.explore-mode-panel{position:fixed;z-index:674;box-sizing:border-box;background:rgba(9,30,50,.97);border:1px solid #93bfd1a3;box-shadow:0 6px 25px rgba(0,16,34,.38);border-radius:13px;padding:10px 12px;color:#e7f5fc;max-height:35dvh;overflow:auto}
-.explore-mode-title{font:700 12px/1.3 'Segoe UI',Arial,sans-serif;color:#b5edf7;margin-bottom:7px}
-.explore-mode-panel .explore-scope{margin-bottom:0!important}
-.explore-mode-panel .explore-scope-mobile{margin-bottom:0!important}
-@media(max-width:700px){.explore-mode-panel{padding:8px 10px;max-height:28dvh}.explore-mode-title{font-size:11px}}
-body.technical-expanded .explore-mode-panel{visibility:hidden;pointer-events:none}
-
-/* V44: balanced compact panels with legible type and clear scope selection. */
-@media(min-width:701px){
- .quick-layers{padding:13px 15px!important;width:min(303px,calc(100vw - 38px))!important;border-radius:14px!important}
- .quick-layers .quick-caption{font-size:16px!important;margin-bottom:10px!important}
- .quick-layers .quick-choice{min-height:49px!important;padding:9px 11px!important;margin-bottom:8px!important;font-size:13px!important;gap:9px!important;border-radius:10px!important}
- .quick-layers .quick-icon{width:22px!important;height:22px!important;font-size:19px!important}
- .quick-layers .public-opacity-row{font-size:12px!important;margin-top:8px!important}
- .explore-mode-panel{padding:11px 14px!important;border-radius:13px!important}
- .explore-mode-title{font-size:14px!important;margin-bottom:9px!important}
- .explore-mode-panel .explore-scope{gap:7px!important}
- .explore-mode-panel .explore-scope-button{min-height:37px!important;padding:8px 11px!important;font-size:14px!important}
+@media(prefers-reduced-motion:reduce){
+ .grace-boundary-fade,.boundary-choice{transition:none!important}
 }
-@media(max-width:700px){
- .explore-mode-panel{padding:10px 12px!important;border-radius:12px!important}
- .explore-mode-title{font-size:13px!important;margin-bottom:7px!important}
- .explore-scope-mobile label{font-size:12px!important}
- .explore-scope-mobile select{font-size:14px!important;min-height:40px!important}
-}
-
-/* V49: visible confirmation for a single Country/Level-2 button click. */
-.explore-scope-button.scope-click-pulse { animation: graceScopeCyanPulse 420ms ease-out; }
-@keyframes graceScopeCyanPulse {
-  0% { box-shadow: 0 0 0 0 rgba(55,230,255,.8); border-color:#35e7ff; }
-  65% { box-shadow: 0 0 0 5px rgba(55,230,255,.22); border-color:#35e7ff; }
-  100% { box-shadow: 0 0 0 0 rgba(55,230,255,0); }
-}
-@media (prefers-reduced-motion:reduce) { .explore-scope-button.scope-click-pulse { animation:none; } }
-
-/* V51: polished single-click mode transition; respects reduced motion. */
-.explore-mode-panel .explore-scope-button {
- transition:background-color .22s ease,border-color .22s ease,box-shadow .22s ease,transform .18s ease;
- font-size:14px!important;min-height:38px!important;
-}
-.explore-mode-panel .explore-scope-button.active {
- background:linear-gradient(110deg,#17637a,#247b90,#17637a)!important;
- border-color:#86eaff!important;
- box-shadow:inset 0 0 0 1px #b3f3ff,0 0 13px rgba(65,211,243,.16)!important;
-}
-.explore-mode-panel .explore-scope-button.scope-click-pulse {
- animation:graceV51Select .55s cubic-bezier(.2,.7,.2,1) both;
-}
-@keyframes graceV51Select {
- 0%{transform:scale(.985);box-shadow:0 0 0 0 rgba(84,233,255,.65)}
- 45%{transform:scale(1.012);box-shadow:0 0 0 5px rgba(84,233,255,.23)}
- 100%{transform:scale(1);box-shadow:0 0 0 0 rgba(84,233,255,0)}
-}
-@media(prefers-reduced-motion:reduce){.explore-mode-panel .explore-scope-button{transition:none}.explore-mode-panel .explore-scope-button.scope-click-pulse{animation:none}}
-
-/* V52: unmistakable selected state, one-tap target, and cyan mode transition. */
-.explore-mode-panel .explore-scope-button{display:flex!important;align-items:center!important;justify-content:space-between!important;gap:12px!important;min-height:44px!important;padding:9px 13px!important;font-size:15px!important;font-weight:650!important;touch-action:manipulation;user-select:none;position:relative;isolation:isolate;cursor:pointer;transition:background .24s ease,border-color .24s ease,box-shadow .24s ease,transform .2s ease!important}
-.explore-mode-panel .explore-scope-button:not(.active){background:#213d55!important;border:1px solid #698ba0!important;color:#e2edf4!important;box-shadow:none!important}
-.explore-mode-panel .explore-scope-button.active{background:linear-gradient(115deg,#14647a,#1c8197)!important;color:#fff!important;border:2px solid #8ef1ff!important;box-shadow:inset 0 0 0 1px rgba(255,255,255,.25),0 0 0 2px rgba(55,219,245,.12),0 0 18px rgba(65,211,243,.28)!important}
-.explore-mode-panel .explore-scope-button .scope-status{display:grid;place-items:center;width:22px;height:22px;border-radius:50%;flex-shrink:0;font-size:13px;font-weight:800;background:transparent;color:transparent}
-.explore-mode-panel .explore-scope-button.active .scope-status{background:#b5f6ff;color:#07364c;box-shadow:0 0 10px rgba(113,234,255,.65)}
-.explore-mode-panel .explore-scope-button.scope-click-pulse{animation:graceV52Pulse .5s ease-out!important}
-@keyframes graceV52Pulse{0%{transform:scale(.97);filter:brightness(1.5)}50%{transform:scale(1.015);filter:brightness(1.2)}100%{transform:scale(1);filter:brightness(1)}}
-@media(prefers-reduced-motion:reduce){.explore-mode-panel .explore-scope-button.scope-click-pulse{animation:none!important}}
-
-/* V53: persistent and unmistakable active scope, including keyboard/touch focus. */
-.explore-mode-panel .explore-scope-button{pointer-events:auto!important;position:relative;z-index:1;cursor:pointer!important;}
-.explore-mode-panel .explore-scope-button.active{background:#116e86!important;border:2px solid #a0f3ff!important;box-shadow:0 0 0 2px #1c7894,0 0 17px #47dfff80!important;}
-.explore-mode-panel .explore-scope-button:not(.active){background:#233c52!important;border:1px solid #6e8fa2!important;box-shadow:none!important;}
-.explore-mode-panel .explore-scope-button:focus-visible{outline:3px solid #d5fbff;outline-offset:2px;}
-.explore-mode-feedback{font:500 11px/1.35 'Segoe UI',Arial,sans-serif;color:#a8dfe9;margin-top:7px;}
-@media(max-width:700px){.explore-mode-feedback{font-size:11px;}}
-
-/* V54: Match the GRACE dataset choices; active state is the cyan fill/border,
-   with no check icon or extra feedback row. */
-.explore-mode-panel .explore-scope-button,
-.explore-mode-panel .explore-scope-button.quick-choice{
- display:flex!important;align-items:center!important;justify-content:flex-start!important;
- width:100%!important;min-height:51px!important;padding:11px 14px!important;
- margin:0!important;border-radius:11px!important;text-align:left!important;
- font:700 15px/1.3 'Segoe UI',Arial,sans-serif!important;
- background:#24415a!important;border:2px solid #638aa4!important;
- color:#f5fbff!important;box-shadow:none!important;
- cursor:pointer!important;pointer-events:auto!important;
- transition:background .22s ease,border-color .22s ease,box-shadow .22s ease!important;
-}
-.explore-mode-panel .explore-scope-button.active,
-.explore-mode-panel .explore-scope-button[aria-pressed="true"]{
- background:#1b6279!important;border-color:#8adff7!important;
- box-shadow:inset 0 0 0 1px #a8e8f5,0 0 12px rgba(75,210,238,.18)!important;
-}
-.explore-mode-panel .explore-scope-button.scope-click-pulse{
- animation:graceScopeCyanPulse 420ms ease-out!important;
-}
-.explore-mode-panel .scope-status,.explore-mode-feedback{display:none!important}
-.explore-mode-panel .explore-scope{gap:9px!important}
-.explore-mode-panel{overflow:visible!important}
-@media(max-width:700px){.explore-mode-panel .explore-scope-button{min-height:44px!important;font-size:14px!important}}
-@media(prefers-reduced-motion:reduce){.explore-mode-panel .explore-scope-button.scope-click-pulse{animation:none!important}}
-
-/* V55: one consistent geographic selector on desktop and mobile. */
-.explore-mode-panel .explore-scope{display:flex!important;flex-direction:column!important;gap:9px!important;}
-.explore-mode-panel .explore-scope-mobile{display:none!important;}
-.explore-mode-panel{pointer-events:auto!important;z-index:850!important;}
-.explore-mode-panel button{pointer-events:auto!important;touch-action:manipulation!important;}
-.explore-mode-panel button.active{background:#166f87!important;border-color:#a7f4ff!important;box-shadow:0 0 0 2px rgba(79,217,243,.35),inset 0 0 0 1px #baf5ff!important;}
-@keyframes graceGeographicMapPulse{0%{box-shadow:inset 0 0 0 0 rgba(94,230,255,0)}35%{box-shadow:inset 0 0 0 5px rgba(94,230,255,.85)}100%{box-shadow:inset 0 0 0 0 rgba(94,230,255,0)}}
-.leaflet-container.grace-geographic-map-pulse{animation:graceGeographicMapPulse .72s ease-out;}
-@media(prefers-reduced-motion:reduce){.leaflet-container.grace-geographic-map-pulse{animation:none}}
