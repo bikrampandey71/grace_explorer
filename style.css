@@ -1472,3 +1472,35 @@ button:focus-visible,select:focus-visible{outline:3px solid #f6cb71!important;ou
 /* Transparent GRAVIMETRY logo: remove the white header card, preserve guide control. */
 .gravimetry-brand{background:transparent!important;border-color:transparent!important;box-shadow:none!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important;}
 .gravimetry-logo{background:transparent!important;box-shadow:none!important;}
+
+/* V41 — phone usability: keep technical heading on one line, and give
+   the chart its own natural height so modal scrolling never clips it. */
+@media (max-width:700px) {
+ .technical-panel .technical-toggle {
+   display:flex!important;align-items:center!important;justify-content:space-between!important;
+   flex-wrap:nowrap!important;gap:4px!important;min-height:38px!important;
+   padding:6px 8px!important;font-size:12px!important;line-height:1.15!important;
+ }
+ .technical-panel .technical-toggle > span:first-child {
+   white-space:nowrap!important;min-width:0!important;font-size:12px!important;
+   letter-spacing:-.2px!important;
+ }
+ .technical-panel .toggle-chevron {flex:none!important;font-size:16px!important;}
+ .technical-panel.panel {width:min(188px,calc(100vw - 16px))!important;}
+ .public-time-dialog {
+   overflow-x:hidden!important;overflow-y:auto!important;
+   -webkit-overflow-scrolling:touch;overscroll-behavior:contain;
+   max-height:calc(100dvh - 16px)!important;
+ }
+ .public-time-header,.public-series-legend,.public-trend-control,
+ .public-plot-area,.public-plot-note,.public-trend-values {flex-shrink:0!important;}
+ .public-plot-area {height:auto!important;min-height:0!important;overflow:hidden!important;}
+ #publicPlot {display:block!important;width:100%!important;height:auto!important;
+   min-height:0!important;max-height:none!important;aspect-ratio:560 / 445!important;}
+ .public-trend-control {min-height:36px!important;}
+ .public-legend-button {min-height:44px!important;}
+}
+@media (max-width:390px) {
+ .technical-panel.panel {width:min(170px,calc(100vw - 16px))!important;}
+ .technical-panel .technical-toggle > span:first-child {font-size:11px!important;}
+}
