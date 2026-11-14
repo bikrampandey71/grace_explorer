@@ -1468,3 +1468,7 @@ button:focus-visible,select:focus-visible{outline:3px solid #f6cb71!important;ou
   right:auto!important;bottom:auto!important;
  }
 }
+
+/* Transparent GRAVIMETRY logo: remove the white header card, preserve guide control. */
+.gravimetry-brand{background:transparent!important;border-color:transparent!important;box-shadow:none!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important;}
+.gravimetry-logo{background:transparent!important;box-shadow:none!important;}
