@@ -24,7 +24,7 @@
     <img class="gravimetry-logo" src="assets/gravimetry_southeast_asia.png"
          alt="Gravimetry for Hydro-Resource Assessment — Southeast Asia">
     <button id="openWelcome" type="button" class="welcome-guide-trigger" aria-haspopup="dialog"
-            aria-controls="welcomeDialog" aria-expanded="false" title="How to use this dashboard">? Guide</button>
+            aria-controls="welcomeDialog" aria-expanded="false" title="Open dashboard guide" aria-label="Open dashboard guide">?</button>
   </div>
 
   <nav class="quick-layers" aria-label="Quick water storage map selection">
@@ -32,17 +32,17 @@
     <button id="quickLayerToggle" class="quick-mobile-toggle" type="button"
             aria-controls="quickLayerContent" aria-expanded="false">
       <span class="quick-mobile-title">Explore water storage
-        <small id="quickLayerCurrent">Downscaled GRACE (5 km, SEA)</small>
+        <small id="quickLayerCurrent">Downscaled GRACE (5 km)</small>
       </span>
       <span class="quick-mobile-chevron" aria-hidden="true">⌄</span>
     </button>
     <div id="quickLayerContent" class="quick-layer-content">
     <div class="quick-caption">Explore water storage</div>
     <button id="quickOriginal" type="button" aria-pressed="false" class="quick-choice">
-      <span class="quick-icon" aria-hidden="true">◉</span><span>Interpolated GRACE (5 km, SEA)</span>
+      <span class="quick-icon" aria-hidden="true">◉</span><span>Interpolated GRACE (5 km)</span>
     </button>
     <button id="quickDownscaled" type="button" aria-pressed="true" class="quick-choice active">
-      <span class="quick-icon" aria-hidden="true">◉</span><span>Downscaled GRACE (5 km, SEA)</span>
+      <span class="quick-icon" aria-hidden="true">◉</span><span>Downscaled GRACE (5 km)</span>
     </button>
     <button id="quickDownscaled1km" type="button" aria-pressed="false" class="quick-choice">
       <span class="quick-icon" aria-hidden="true">◉</span><span>Downscaled GRACE (1 km, Thailand)</span>
@@ -57,12 +57,12 @@
       <div class="boundary-mode-caption">Boundaries</div>
       <div class="boundary-mode-buttons">
         <button id="boundaryCountry" type="button" class="boundary-choice active" aria-pressed="true"
-                title="Show country boundaries only">
-          <span class="boundary-swatch swatch-country" aria-hidden="true"></span><span>Country</span>
+                title="Show national boundaries only">
+          <span class="boundary-swatch swatch-country" aria-hidden="true"></span><span>National</span>
         </button>
         <button id="boundaryLevel2" type="button" class="boundary-choice" aria-pressed="false"
-                title="Show country (black) and Level-2 (magenta) boundaries">
-          <span class="boundary-swatch swatch-level2" aria-hidden="true"></span><span>Level-2</span>
+                title="Show national (black) and sub-national (magenta) boundaries">
+          <span class="boundary-swatch swatch-level2" aria-hidden="true"></span><span>Sub-National</span>
         </button>
       </div>
       <div id="boundaryStatus" class="boundary-status" role="status" aria-live="polite"></div>
@@ -239,9 +239,9 @@
   <dialog id="aboutDialog">
     <header class="modal-header"><h2>Understanding the GRACE datasets</h2><button id="closeAbout" title="Close">×</button></header>
     <p><b>TWSA</b> is terrestrial water storage anomaly: how much estimated total land-water storage differs from a baseline average, expressed as centimeters of equivalent water thickness. It is not the water depth of a flood.</p>
-    <p><b>Downscaled ensemble (0.05°), <code>tws_m</code>:</b> the monthly ensemble mean of mass-conserving downscaled CSR, GSFC and JPL mascon estimates. Finer grid patterns are model-dependent, not independent satellite measurements at 5-km resolution. The downscaled file specifies a 2004–2009 reference baseline.</p>
+    <p><b>Downscaled GRACE (5 km), <code>tws_m</code>:</b> the monthly ensemble mean of mass-conserving downscaled CSR, GSFC and JPL mascon estimates. Finer grid patterns are model-dependent, not independent satellite measurements at 5-km resolution. The downscaled file specifies a 2004–2009 reference baseline.</p>
     <p><b>Thailand downscaled ensemble (nominal 1 km), <code>tws_m_1km</code>:</b> Thailand-specific mass-conserved downscaled GRACE/GRACE-FO ensemble mean. Only <code>tws_m</code> is used from each 1-km NetCDF file. The finer grid is a model-derived estimate, not an independently measured 1-km GRACE resolution.</p>
-    <p><b>Original interpolated ensemble (0.05°), <code>obs_m</code>:</b> average of the original three mascon estimates interpolated onto the downscaled grid for like-for-like maps. Interpolation is only a grid conversion: it does not create more independent GRACE measurements.</p>
+    <p><b>Interpolated GRACE (5 km), <code>obs_m</code>:</b> average of the original three mascon estimates interpolated onto the downscaled grid for like-for-like maps. Interpolation is only a grid conversion: it does not create more independent GRACE measurements.</p>
     <p><b>CSR mascon (0.25°, RL06.3):</b> University of Texas Center for Space Research solution. Estimates gravity-driven terrestrial mass changes using mascon processing, with corrections such as geocenter, low-degree coefficients and glacial isostatic adjustment in the public corrected product. A 0.25° output grid is not equivalent to 0.25° independent resolution. <a href="https://www2.csr.utexas.edu/grace/RL0603_mascons.html" target="_blank" rel="noopener">CSR documentation</a>.</p>
     <p><b>GSFC mascon (0.5°, RL06v2.0):</b> NASA Goddard Space Flight Center's mascon estimate. The distributed 0.5° equal-angle grid represents a coarser mass-estimation solution; spatial constraints help reduce noise and leakage. <a href="https://earth.gsfc.nasa.gov/geo/data/grace-mascons" target="_blank" rel="noopener">GSFC documentation</a>.</p>
     <p><b>JPL mascon (0.5°, RL06.3Mv04):</b> NASA Jet Propulsion Laboratory's mascon solution for changes in water, land ice and other mass stores, displayed here as equivalent water thickness anomalies. The product and any coastal-leakage/CRI options should be checked in the original file metadata. <a href="https://podaac.jpl.nasa.gov/dataset/TELLUS_GRAC-GRFO_MASCON_GRID_RL06.3_V4" target="_blank" rel="noopener">JPL documentation</a>.</p>
@@ -266,14 +266,14 @@
       <ol class="welcome-steps">
         <li><span class="welcome-step-number">1</span><div><strong>Choose a water storage map</strong><p>Choose <b>Original interpolated (5 km)</b>, <b>Downscaled (5 km)</b>, or <b>Thailand downscaled (1 km)</b> from the large buttons on the left. The 1-km option appears only when those files were included in the build.</p></div></li>
         <li><span class="welcome-step-number">2</span><div><strong>Travel through time</strong><p>Choose a year and month at the bottom, or press <b>▶ Play</b> to watch changes. Months without observations are left blank.</p></div></li>
-        <li><span class="welcome-step-number">3</span><div><strong>Explore a country, province, or basin</strong><p>Hover to see its name. Click or double-click a boundary to open its easy-to-read <b>Time series</b>, with available datasets and trends selected. For spatial maps, use <b>Technical use</b>.</p></div></li>
-        <li><span class="welcome-step-number">4</span><div><strong>Need more tools?</strong><p>Open <b>Technical use</b> for CSR, GSFC and JPL layers, detailed spatial maps, lightweight time-series charts, metrics, and downloads.</p></div></li>
+        <li><span class="welcome-step-number">3</span><div><strong>Explore a country, province, or basin</strong><p>Hover to see its name. Click or double-click a boundary to open its easy-to-read <b>Time series</b>, with only datasets containing observations for that area. Drag the time-series window by its header on desktop. For spatial maps, use <b>Technical use</b>.</p></div></li>
+        <li><span class="welcome-step-number">4</span><div><strong>Need more tools?</strong><p>Choose <b>National</b> for black country outlines or <b>Sub-National</b> for black country and magenta district outlines. The zoom-out button goes back one zoom step. Open <b>Technical use</b> for CSR, GSFC and JPL layers, detailed spatial maps, lightweight time-series charts, metrics, and downloads.</p></div></li>
       </ol>
       <div class="welcome-explainer"><strong>Reading the colors</strong><p><span class="welcome-color-low">Warm colors</span> indicate below-average water storage; <span class="welcome-color-high">blue colors</span> indicate above-average storage. These are anomalies relative to a baseline, not floodwater depths.</p></div>
       <p class="welcome-caution"></p>
     </div>
     <div class="welcome-footer">
-      <span class="welcome-manual-note">The guide opens only when you select <b>? Guide</b>.</span>
+      <span class="welcome-manual-note">The guide opens only when you select the circled <b>?</b>.</span>
       <button type="button" id="welcomeStart" class="welcome-start">Start exploring</button>
     </div>
   </dialog>
