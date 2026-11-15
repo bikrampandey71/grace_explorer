@@ -4,6 +4,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>GRACE Explorer</title>
+  <link rel="icon" type="image/png" sizes="64x64" href="assets/grace_favicon.png">
+  <link rel="apple-touch-icon" href="assets/grace_touch_icon.png">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
   <link rel="stylesheet" href="style.css">
   <!-- These are ordinary scripts to allow opening index.html via file:// -->
@@ -155,7 +157,7 @@
     </header>
     <div id="publicLegend" class="public-series-legend" role="group" aria-label="Show or hide datasets"></div>
     <label class="public-trend-control" for="publicTrend">
-      <input id="publicTrend" type="checkbox" checked> Show linear trend (dashed)
+      <input id="publicTrend" type="checkbox"> Show linear trend (dashed)
     </label>
     <div class="public-plot-area"><svg id="publicPlot" viewBox="0 0 1120 455"
           role="img" aria-label="GRACE monthly water storage anomaly time series"></svg></div>
@@ -279,4 +281,3 @@
   </dialog>
 </body>
 </html>
- 
