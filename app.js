@@ -1,6 +1,6 @@
 /* GRACE Explorer V40: Country / Level-2 boundary buttons with fade transitions.
    Based on V39 (hover repair); GRACE data and region selection logic are unchanged.
-   V40: Country = country outline only; Level-2 = country (black) + Level-2 (light magenta).
+   V43: opens in Sub-National mode. National = country outline only; Sub-National = country (black) + Level-2 (light green).
    Static data arrives only as classic JavaScript files.
    No fetch(), XHR, module imports, or local web server required. */
 'use strict';
@@ -27,7 +27,7 @@ const HELP={
  jpl:'JPL RL06.3Mv04 mascon · NASA JPL · 0.5° grid.'
 };
 const st={map:null,base:{},overlay:null,regions:null,level2Regions:null,boundaryLayers:new Map(),previousBoundary:null,
-    boundaryMode:'country',countryRenderer:null,l2Renderer:null,l2WantVisible:false,l2Fading:false,l2PurgeTimer:0,level2Refreshers:[],l2Pending:null,l2Shown:false,level2Prefetch:null,
+    boundaryMode:'level2',countryRenderer:null,l2Renderer:null,l2WantVisible:true,l2Fading:false,l2PurgeTimer:0,level2Refreshers:[],l2Pending:null,l2Shown:false,level2Prefetch:null,
     month:0,layer:'tws_m',region:'footprint',playing:false,timer:null,chartOpen:false,
     series:{tws_m:true,tws_m_1km:true,obs_m:true,csr:false,gsfc:false,jpl:false},
     colorMin:-50,colorMax:50,fieldCache:new Map(),fieldPending:new Map(),
@@ -40,7 +40,7 @@ function has(layer,i){return (M.available[layer]||[]).includes(M.dates[i]);}
 // The threshold is calculated after fitBounds, not hardcoded (screen sizes differ).
 // It is shared by the renderers, geographic hit testing and lazy chunk loader.
 let LEVEL2_SELECTION_ZOOM=6.5;
-let level2WasActive=false;
+let level2WasActive=true;   // dashboard opens in Sub-National (Level-2) mode
 // V40: Level-2 visibility is controlled by the Country / Level-2 buttons, not by zoom.
 const level2Enabled=()=>st.boundaryMode==='level2';
 const onDetailZoom=level2Enabled;
@@ -68,6 +68,7 @@ function purgeLevel2Layers(){
 function onLevel2Drawn(){
  if(!st.l2WantVisible)return;
  st.l2WantVisible=false;
+ setRendererOpacity(st.l2Renderer,0,true);   // start from transparent, then fade in
  requestAnimationFrame(()=>requestAnimationFrame(()=>{
   if(!level2Enabled())return;
   setRendererOpacity(st.l2Renderer,1);st.l2Shown=true;
@@ -78,8 +79,10 @@ function softFadeIn(group){
  if(reducedMotion())return;
  const items=[];group.eachLayer(l=>{if(l.feature)items.push(l);});
  for(const l of items)l.setStyle({opacity:0,fillOpacity:0});
- const t0=performance.now(),D=420;
+ const t0=performance.now(),D=380;let last=0;
  const tick=now=>{
+  if(now-last<33&&now-t0<D){requestAnimationFrame(tick);return;}
+  last=now;
   const p=Math.min(1,(now-t0)/D),e=p<.5?4*p*p*p:1-Math.pow(-2*p+2,3)/2;
   for(const l of items){
    if(!l._map||l._graceHoverFrame!=null)continue;
@@ -93,7 +96,7 @@ function softFadeIn(group){
 function updateBoundaryStatus(){
  const el=$('boundaryStatus');if(!el)return;
  const busy=level2Enabled()&&st.l2Pending&&st.l2Pending()>0;
- el.textContent=busy?'Loading Level-2 boundaries…':'';
+ el.textContent=busy?'Loading sub-national boundaries…':'';
  el.classList.toggle('show',busy);
 }
 function setBoundaryMode(mode){
@@ -113,18 +116,23 @@ function setBoundaryMode(mode){
   // Country polygons must not sit above the districts as hover/click targets.
   if(countryPane)countryPane.style.pointerEvents='none';
   if(l2Box)l2Box.style.pointerEvents='';
-  const mounted=Boolean(st.level2Regions&&st.map.hasLayer(st.level2Regions));
-  st.l2WantVisible=!mounted;if(!mounted)st.l2Shown=false;
-  if(mounted)setRendererOpacity(st.l2Renderer,1);else setRendererOpacity(st.l2Renderer,0,true);
+  // Level-2 layers were kept mounted while hidden, so switching back is only a fade (no rebuild).
+  const mounted=l2Chunks.size>0||Boolean(st.level2Regions&&st.map.hasLayer(st.level2Regions));
+  st.l2WantVisible=!mounted;st.l2Shown=mounted;
+  if(mounted){
+   try{st.l2Renderer?._update?.();}catch(_){}   // repaint the canvas that was not drawn while hidden
+   setRendererOpacity(st.l2Renderer,1);
+  }else setRendererOpacity(st.l2Renderer,0,true);
   syncBoundarySelectionMode();
   for(const run of st.level2Refreshers)run();
  }else{
   if(countryPane)countryPane.style.pointerEvents='';
   if(l2Box)l2Box.style.pointerEvents='none';
-  st.l2WantVisible=false;st.l2Fading=true;st.l2Shown=false;
+  st.l2WantVisible=false;st.l2Fading=true;
   setRendererOpacity(st.l2Renderer,0);
   syncBoundarySelectionMode();
-  st.l2PurgeTimer=setTimeout(()=>{st.l2Fading=false;if(!level2Enabled())purgeLevel2Layers();},reducedMotion()?0:520);
+  // After the fade the layers stay mounted but are no longer painted (see _draw guard in initializeMap).
+  st.l2PurgeTimer=setTimeout(()=>{st.l2Fading=false;},reducedMotion()?0:520);
  }
  updateBoundaryStatus();
 }
@@ -214,7 +222,7 @@ function updateDateSelectors(){
 function boundaryStyle(feature){
  const detailed=feature.properties?.kind==='level2';
  const selected=st.region===feature.properties?.id;
- return {color:selected?'#9deaf9':detailed?'#ff73ff':'#000000',
+ return {color:selected?'#9deaf9':detailed?'#90ee90':'#000000',
          weight:selected?2.3:(detailed?1:1.5),opacity:selected?1:(detailed?.9:.95),
          fill:true,fillColor:'#6ac7de',fillOpacity:selected?0.012:0.004};
 }
@@ -520,16 +528,12 @@ function installBoundaryInteractions(map){
   // Scientific data, original polygons and clickable geometry are never changed.
   const touch=useTapBoundaryPopup();
   const options={style:boundaryStyle,interactive:true,bubblingMouseEvents:false,
-    smoothFactor:touch?2.1:1.25,renderer:st.l2Renderer||L.canvas({padding:touch?.12:.28}),onEachFeature:configure};
+    smoothFactor:0,renderer:st.l2Renderer||L.canvas({padding:touch?.12:.28}),onEachFeature:configure};
   const boundsById=new Map(detail.map(f=>[f.properties?.id,region(f.properties?.id)?.bbox]));
   let visibleIds=new Set(),lastKey='',pending=0;
   const sync=()=>{
    pending=0;
-   if(!level2Enabled()){
-    if(!st.l2Fading)purgeLevel2Layers();   // while fading out, layers stay until the fade ends
-    visibleIds=new Set();lastKey='';
-    return;
-   }
+   if(!level2Enabled()){lastKey='';return;}   // National mode: keep Level-2 mounted (hidden) for an instant switch back
    const b=map.getBounds(),pad=touch?.45:.30;
    const w=b.getWest()-pad,e=b.getEast()+pad,s=b.getSouth()-pad,n=b.getNorth()+pad;
    const items=detail.filter(f=>{
@@ -561,7 +565,6 @@ function installBoundaryInteractions(map){
  // the deferred Level-2 viewport refresh. This also handles rapid wheel zoom.
  map.on('zoomend',()=>{
   if(level2Enabled())return;
-  if(!st.l2Fading)purgeLevel2Layers();
   st.regions?.bringToFront();
  });
  if(M.admin2LazyVersion===34&&Array.isArray(M.admin2Chunks))installLazyLevel2(map,configure);
@@ -609,31 +612,33 @@ function installLazyLevel2(map,configure){
    group.append(fragment);
   }
  }
- // Simplify polygons more at the overview (fewer vertices = smoother pan/zoom).
- const smoothFor=zoom=>(useTapBoundaryPopup()?2.1:1.5)*(zoom<LEVEL2_SELECTION_ZOOM+1.5?1.7:1);
- const applySmooth=zoom=>{
-  const sf=smoothFor(zoom);
-  for(const {layer} of l2Chunks.values())layer.eachLayer(l=>{l.options.smoothFactor=sf;});
- };
- map.on('zoomanim',e=>applySmooth(e.zoom));
+ // Keep the original Level-2 vertices at every zoom. Zoom-dependent
+ // simplification can move neighboring polygon edges independently, creating
+ // apparent triangular overlaps and gaps (especially in dense urban districts).
+ // Leaflet's Canvas renderer still clips paths to the viewport for performance.
+ const level2SmoothFactor=0;
  function applyVisible(){
   frame=0;
-  if(!level2Enabled()){
-   if(!st.l2Fading)purgeLevel2Layers();   // while fading out, layers stay until the fade ends
-   return;
-  }
+  if(!level2Enabled())return;   // National mode: leave the mounted (hidden) chunks untouched
   // Mount each chunk ONCE. Panning only adds/removes whole chunks; nothing is rebuilt.
   const extent=currentBounds(.16),keep=currentBounds(.9);
-  let added=false;
+  let added=false,built=false,more=false;
   for(const desc of catalog){
    const data=chunks.get(desc.id),have=l2Chunks.get(desc.id);
    if(!data)continue;
    if(!have&&intersects(desc.bbox,extent)){
+    if(built){more=true;continue;}   // one chunk per animation frame keeps the map fluid
+    // Chunk footprints may overlap. Draw a geographic feature only once even
+    // when it is included in more than one neighboring chunk.
+    const mountedIds=new Set();
+    for(const existing of l2Chunks.values())for(const id of existing.ids)mountedIds.add(id);
+    const features=(data.features||[]).filter(f=>!mountedIds.has(f.properties?.id));
+    if(!features.length)continue;
     if(!st.level2Regions)st.level2Regions=L.featureGroup().addTo(map);
-    const features=data.features||[];
+    built=true;
     const layer=L.geoJSON({type:'FeatureCollection',features},{
      style:boundaryStyle,renderer:st.l2Renderer||L.canvas({padding:.15,pane:'graceLevel2'}),interactive:true,
-     bubblingMouseEvents:false,smoothFactor:smoothFor(map.getZoom()),onEachFeature:configure
+     bubblingMouseEvents:false,smoothFactor:level2SmoothFactor,onEachFeature:configure
     });
     l2Chunks.set(desc.id,{layer,ids:features.map(f=>f.properties?.id)});
     st.level2Regions.addLayer(layer);
@@ -646,6 +651,7 @@ function installLazyLevel2(map,configure){
    }
   }
   if(added)onLevel2Drawn();
+  if(more)scheduleDrawing();
  }
  function scheduleDrawing(){if(frame)cancelAnimationFrame(frame);frame=requestAnimationFrame(applyVisible);}
  function scheduleDrawingBatch(){scheduleDrawing();}
@@ -718,12 +724,17 @@ function initializeMap(){
  const map=L.map('map',{minZoom:compact?2.5:3,maxZoom:16,zoomSnap:.25,
    worldCopyJump:true,preferCanvas:true,
    maxBounds:[[-26,72],[40,164]],maxBoundsViscosity:.9});st.map=map;
- // V40: dedicated panes keep the stacking order fixed: raster < Level-2 (magenta) < country (black).
+ // V40: dedicated panes keep the stacking order fixed: raster < Level-2 (light green) < country (black).
  map.createPane('graceLevel2').style.zIndex=410;
  map.createPane('graceCountry').style.zIndex=420;
  st.countryRenderer=L.canvas({padding:.4,pane:'graceCountry'});
  st.l2Renderer=L.canvas({padding:useTapBoundaryPopup()?.12:.25,pane:'graceLevel2'}).addTo(map);
  setRendererOpacity(st.l2Renderer,0,true);
+ // Level-2 stays mounted in National mode, but its canvas is not painted while invisible.
+ {const r=st.l2Renderer,paint=r._draw;
+  if(typeof paint==='function')r._draw=function(){if(!level2Enabled()&&!st.l2Fading)return;return paint.apply(this,arguments);};}
+ // Default mode is Sub-National: districts must receive hover/click, so the country pane is click-through.
+ if(level2Enabled())map.getPane('graceCountry').style.pointerEvents='none';
  const opt={maxNativeZoom:17,maxZoom:19,updateWhenIdle:true,keepBuffer:useTapBoundaryPopup()?1:2,
    attribution:'Tiles © Esri and imagery/data contributors'};
  st.base={
@@ -751,7 +762,7 @@ function initializeMap(){
  // The + / - Leaflet controls normally change zoom by one level. Accommodate
  // floating-point rounding and the existing 0.25 zoom snap without changing zoom animation.
  LEVEL2_SELECTION_ZOOM=overviewZoom+(map.options.zoomDelta||1)-0.001;
- level2WasActive=false;
+ level2WasActive=true;
  // Permit one additional full zoom-out step beyond the initial Southeast Asia overview.
  // Keep the original zoom controls, quarter-step snapping and animation unchanged.
  map.setMinZoom(Math.max(compact?2.5:3,overviewZoom-1));
