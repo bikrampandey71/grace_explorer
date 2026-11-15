@@ -1416,7 +1416,7 @@ button:focus-visible,select:focus-visible{outline:3px solid #f6cb71!important;ou
    V40 — COUNTRY / LEVEL-2 BOUNDARY BUTTONS  (EDIT HERE)
    Buttons sit at the bottom of the "Explore water storage" box.
    Boundary colours are set in app.js → boundaryStyle():
-     country '#000000' (black), Level-2 '#ff73ff' (light magenta).
+     country '#000000' (black), Level-2 '#90ee90' (light green).
    Fade speed: .grace-boundary-fade transition (and the 520 ms purge timer in app.js; keep it just under the CSS time).
    ============================================================================ */
 .boundary-mode{margin-top:12px;padding-top:11px;border-top:1px solid rgba(147,191,209,.35)}
@@ -1432,10 +1432,6 @@ button:focus-visible,select:focus-visible{outline:3px solid #f6cb71!important;ou
 .boundary-choice:active{transform:scale(.97)}
 .boundary-choice.active,.boundary-choice[aria-pressed="true"]{
  border-color:#8adff7;background:#1b6279;box-shadow:inset 0 0 0 1px #a8e8f5}
-.boundary-swatch{display:inline-block;width:22px;height:5px;border-radius:3px;flex:none;
- box-shadow:0 0 0 1.5px rgba(255,255,255,.9)}
-.swatch-country{background:#000}
-.swatch-level2{background:linear-gradient(90deg,#000 0 50%,#ff73ff 50% 100%)}
 .boundary-status{display:none;margin:7px 2px 0;font-size:12.5px;color:#cfe8f2}
 .boundary-status.show{display:block}
 /* Smooth boundary fades: the whole Canvas layer fades (GPU composited). */
@@ -1444,7 +1440,6 @@ button:focus-visible,select:focus-visible{outline:3px solid #f6cb71!important;ou
  .boundary-mode{margin-top:8px;padding-top:8px}
  .boundary-mode-caption{font-size:12px;margin-bottom:6px}
  .boundary-choice{min-height:42px;font-size:13px;padding:6px 6px;gap:6px}
- .boundary-swatch{width:16px}
 }
 @media(prefers-reduced-motion:reduce){
  .grace-boundary-fade,.boundary-choice{transition:none!important}
