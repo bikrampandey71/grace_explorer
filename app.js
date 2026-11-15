@@ -1282,10 +1282,8 @@ function openPublicTimeSeries(){
  const dialog=$('publicTimeDialog');dialog.classList.remove('public-time-dragged');
  dialog.style.removeProperty('--public-x');dialog.style.removeProperty('--public-y');
  st.publicSeries=Object.fromEntries(ORDER.map(id=>[id,publicHasObservations(id)]));
- // Mobile opens with trends off to keep the observations legible.
- // Desktop retains the existing default trend display.
- st.publicTrend=window.matchMedia('(max-width: 700px)').matches ? false : true;
- $('publicTrend').checked=st.publicTrend;
+ st.publicTrend=true;
+ $('publicTrend').checked=true;
  $('publicBackdrop').hidden=false;$('publicTimeDialog').hidden=false;
  $('publicTimeDialog').setAttribute('aria-hidden','false');
  $('publicTimeTitle').textContent=region(st.region)?.name||'Selected region';
